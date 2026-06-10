@@ -41,7 +41,9 @@ export function Day({ date }: { date: string }) {
         </div>
       )}
 
-      <LogView date={date} initialBody={entry.body} />
+      {/* key remounts the editor when navigating to a different day, so its
+          local state re-initialises from the new entry. */}
+      <LogView key={date} date={date} initialBody={entry.body} />
     </div>
   );
 }

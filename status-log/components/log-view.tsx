@@ -23,14 +23,6 @@ export function LogView({
   const [saving, startSave] = useTransition();
   const editRef = useRef<HTMLTextAreaElement>(null);
 
-  // Keep local state in sync if the server sends a different day's entry.
-  useEffect(() => {
-    setBody(initialBody);
-    setDraft(initialBody);
-    setEditing(false);
-    setPasted("");
-  }, [date, initialBody]);
-
   useEffect(() => {
     if (editing) editRef.current?.focus();
   }, [editing]);
