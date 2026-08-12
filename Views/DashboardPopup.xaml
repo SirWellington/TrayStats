@@ -328,82 +328,87 @@
                 </StackPanel>
             </Border>
 
-            <!-- ==================== GPU Row ==================== -->
-            <Border Style="{StaticResource MetricRowStyle}"
-                    MouseLeftButtonDown="GpuRow_Click"
-                    Visibility="{Binding Sections.ShowGpu, Converter={StaticResource BoolToVis}}">
-                <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+            <!-- ==================== GPU Row(s) ==================== -->
+            <ItemsControl x:Name="GpuItems" ItemsSource="{Binding Gpus}"
+                          Visibility="{Binding Sections.ShowGpu, Converter={StaticResource BoolToVis}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource MetricRowStyle}" PreviewMouseLeftButtonUp="GpuItem_Click">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Width="60">
-                            <TextBlock Text="GPU" Style="{StaticResource MetricLabelStyle}"/>
-                            <TextBlock Text="{Binding GpuSummary}" Style="{StaticResource MetricValueStyle}"/>
-                        </StackPanel>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Width="60">
+                                        <TextBlock Text="{Binding DisplayName}" Style="{StaticResource MetricLabelStyle}"/>
+                                        <TextBlock Text="{Binding Data.CoreLoad, StringFormat={}{0:F0}%}" Style="{StaticResource MetricValueStyle}"/>
+                                    </StackPanel>
 
-                        <comp:SparklineChart x:Name="GpuChart" Grid.Column="1" Height="40" Margin="4,0"
-                            Values="{Binding GpuValues}"
-                            StrokeColor="#FF00BFFF" MinValue="0" MaxValue="100"/>
+                                    <comp:SparklineChart Grid.Column="1" Height="40" Margin="4,0"
+                                        Values="{Binding SparklineValues}"
+                                        StrokeColor="{Binding StrokeBrush}" MinValue="0" MaxValue="100"/>
 
-                        <TextBlock Grid.Column="2" VerticalAlignment="Center"
-                                   Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
-                    </Grid>
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                                               Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                               Foreground="#60FFFFFF" Margin="4,0"/>
+                                </Grid>
 
-                    <!-- GPU Detail Panel -->
-                    <StackPanel Visibility="{Binding IsGpuDetailVisible, Converter={StaticResource BoolToVis}}"
-                                Margin="0,6,0,0">
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition/>
-                                    <RowDefinition/>
-                                    <RowDefinition/>
-                                    <RowDefinition/>
-                                    <RowDefinition/>
-                                    <RowDefinition/>
-                                    <RowDefinition/>
-                                </Grid.RowDefinitions>
+                                <!-- GPU Detail Panel -->
+                                <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"
+                                            Margin="0,6,0,0">
+                                    <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding Gpu.Name}"
-                                           Foreground="#B0FFFFFF" FontSize="11" Margin="0,0,0,4"/>
+                                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding Data.Name}"
+                                                       Foreground="#B0FFFFFF" FontSize="11" Margin="0,0,0,4"/>
 
-                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Temperature"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailValue}"
-                                           Text="{Binding Gpu.Temperature, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0}°C'}"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Temperature"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailValue}"
+                                                       Text="{Binding Data.Temperature, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0}°C'}"/>
 
-                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Core Clock"/>
-                                <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource DetailValue}"
-                                           Text="{Binding Gpu.CoreClock, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} MHz'}"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Core Clock"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource DetailValue}"
+                                                       Text="{Binding Data.CoreClock, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} MHz'}"/>
 
-                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Memory Clock"/>
-                                <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource DetailValue}"
-                                           Text="{Binding Gpu.MemoryClock, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} MHz'}"/>
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Memory Clock"/>
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource DetailValue}"
+                                                       Text="{Binding Data.MemoryClock, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} MHz'}"/>
 
-                                <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="VRAM Used"/>
-                                <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource DetailValue}"
-                                           Text="{Binding Gpu.MemoryUsed, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} MB'}"/>
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="VRAM Used"/>
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource DetailValue}"
+                                                       Text="{Binding Data.MemoryUsed, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} MB'}"/>
 
-                                <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Fan Speed"/>
-                                <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource DetailValue}"
-                                           Text="{Binding Gpu.FanSpeed, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} RPM'}"/>
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Fan Speed"/>
+                                            <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource DetailValue}"
+                                                       Text="{Binding Data.FanSpeed, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F0} RPM'}"/>
 
-                                <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Power"/>
-                                <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource DetailValue}"
-                                           Text="{Binding Gpu.Power, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F1} W'}"/>
-                            </Grid>
+                                            <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Power"/>
+                                            <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource DetailValue}"
+                                                       Text="{Binding Data.Power, Converter={StaticResource SensorValue}, ConverterParameter='{}{0:F1} W'}"/>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
                         </Border>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <!-- ==================== RAM Row ==================== -->
             <Border Style="{StaticResource MetricRowStyle}"

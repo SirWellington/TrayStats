@@ -29,11 +29,24 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     // Sparkline data
     public List<double> CpuValues { get; } = new();
-    public List<double> GpuValues { get; } = new();
     public List<double> RamValues { get; } = new();
     public List<double> NetDownValues { get; } = new();
     public List<double> NetUpValues { get; } = new();
     public List<double> BatteryValues { get; } = new();
+
+    // Multi-GPU support
+    public ObservableCollection<GpuDisplayModel> Gpus { get; } = new();
+    private int _selectedTrayGpuIndex = 0;
+    public int SelectedTrayGpuIndex
+    {
+        get => _selectedTrayGpuIndex;
+        set
+        {
+            if (_selectedTrayGpuIndex == value) return;
+            _selectedTrayGpuIndex = value;
+            OnPropertyChanged();
+        }
+    }
 
     // Expose model objects
     public CpuData Cpu => _cpuService.Data;
@@ -58,7 +71,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     // Detail panel visibility
     [ObservableProperty] private bool _isWeatherDetailVisible;
     [ObservableProperty] private bool _isCpuDetailVisible;
-    [ObservableProperty] private bool _isGpuDetailVisible;
     [ObservableProperty] private bool _isRamDetailVisible;
     [ObservableProperty] private bool _isDiskDetailVisible;
     [ObservableProperty] private bool _isBatteryDetailVisible;
@@ -118,7 +130,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         for (int i = 0; i < MaxDataPoints; i++)
         {
             CpuValues.Add(0);
-            GpuValues.Add(0);
             RamValues.Add(0);
             NetDownValues.Add(0);
             NetUpValues.Add(0);
@@ -200,8 +211,40 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         _dispatcher.BeginInvoke(() =>
         {
-            PushValue(GpuValues, Gpu.CoreLoad);
-            GpuSummary = $"{Gpu.CoreLoad:F0}%";
+            var allGpus = _gpuService.AllGpus;
+
+            // Sync display models with actual hardware GPUs
+            var existingKeys = new HashSet<string>(allGpus.Select(g => g.Name));
+            var toRemove = Gpus.Where(m => !existingKeys.Contains(m.Data.Name)).ToList();
+            foreach (var m in toRemove)
+                Gpus.Remove(m);
+
+            // Add or update GPU display models
+            string[] colors = { "#FF00BFFF", "#FF4CAF50", "#FFFF8C00", "#FFE91E63", "#FF9C27B0" };
+            for (int i = 0; i < allGpus.Count; i++)
+            {
+                var gpuData = allGpus[i];
+                var displayModel = Gpus.FirstOrDefault(m => ReferenceEquals(m.Data, gpuData));
+
+                if (displayModel == null)
+                {
+                    displayModel = new GpuDisplayModel(gpuData, i, colors[i % colors.Length]);
+                    Gpus.Add(displayModel);
+                }
+
+                displayModel.PushValue(gpuData.CoreLoad);
+            }
+
+            // Clamp selected tray GPU index
+            if (SelectedTrayGpuIndex >= Gpus.Count && Gpus.Count > 0)
+                SelectedTrayGpuIndex = Gpus.Count - 1;
+
+            // Build summary string for all GPUs
+            var parts = new List<string>();
+            foreach (var m in Gpus)
+                parts.Add($"{m.DisplayName}: {m.Data.CoreLoad:F0}%");
+            GpuSummary = string.Join(" | ", parts);
+
             OnPropertyChanged(nameof(Gpu));
             if (_dashboardActive) InvalidateCharts?.Invoke();
         });
@@ -311,9 +354,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void ToggleCpuDetail() => IsCpuDetailVisible = !IsCpuDetailVisible;
-
-    [RelayCommand]
-    private void ToggleGpuDetail() => IsGpuDetailVisible = !IsGpuDetailVisible;
 
     [RelayCommand]
     private void ToggleRamDetail() => IsRamDetailVisible = !IsRamDetailVisible;

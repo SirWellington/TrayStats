@@ -1,6 +1,10 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using TrayStats.Models;
 using TrayStats.ViewModels;
+using TrayStats.Views.Components;
 
 namespace TrayStats.Views;
 
@@ -29,11 +33,33 @@ public partial class DashboardPopup : Window
     private void OnInvalidateCharts()
     {
         CpuChart.InvalidateValues();
-        GpuChart.InvalidateValues();
         RamChart.InvalidateValues();
         BatteryChart.InvalidateValues();
         NetDownChart.InvalidateValues();
         NetUpChart.InvalidateValues();
+
+        // Invalidate all GPU sparkline charts in the ItemsControl
+        if (GpuItems is { } gpuContainer)
+        {
+            for (int i = 0; i < gpuContainer.Items.Count; i++)
+            {
+                var container = gpuContainer.ItemContainerGenerator.ContainerFromIndex(i) as DependencyObject;
+                if (container != null)
+                    FindAndInvalidateSparklineCharts(container);
+            }
+        }
+    }
+
+    private static void FindAndInvalidateSparklineCharts(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is SparklineChart chart)
+                chart.InvalidateValues();
+            else
+                FindAndInvalidateSparklineCharts(child);
+        }
     }
 
     public void ShowAtTray()
@@ -92,9 +118,10 @@ public partial class DashboardPopup : Window
         ViewModel?.ToggleCpuDetailCommand.Execute(null);
     }
 
-    private void GpuRow_Click(object sender, MouseButtonEventArgs e)
+    private void GpuItem_Click(object sender, MouseButtonEventArgs e)
     {
-        ViewModel?.ToggleGpuDetailCommand.Execute(null);
+        if (sender is FrameworkElement fe && fe.DataContext is GpuDisplayModel gpu)
+            gpu.IsExpanded = !gpu.IsExpanded;
     }
 
     private void RamRow_Click(object sender, MouseButtonEventArgs e)

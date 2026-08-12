@@ -9,10 +9,16 @@ public sealed class GpuMonitorService : IMonitorService
     private const float IdleThreshold = 15f;
 
     private readonly HardwareContext _context;
-    private IHardware? _currentGpu;
 
+    // Primary GPU (auto-selected for backward compatibility)
     public GpuData Data { get; } = new();
+
+    // All detected GPUs with stable references
+    public List<GpuData> AllGpus { get; } = new();
+
     public event Action? DataUpdated;
+
+    private readonly Dictionary<string, GpuEntry> _gpuMap = new(StringComparer.Ordinal);
 
     public GpuMonitorService(HardwareContext context)
     {
@@ -40,26 +46,6 @@ public sealed class GpuMonitorService : IMonitorService
         _ => 0
     };
 
-    private static float GetGpuLoad(IHardware hw)
-    {
-        float coreLoad = 0f;
-        float d3dLoad = 0f;
-        try
-        {
-            foreach (var sensor in hw.Sensors)
-            {
-                if (sensor.Value is not { } val) continue;
-                if (sensor.SensorType != SensorType.Load) continue;
-                if (sensor.Name == "GPU Core")
-                    coreLoad = val;
-                else if (sensor.Name.StartsWith("D3D") && val > d3dLoad)
-                    d3dLoad = val;
-            }
-        }
-        catch { }
-        return coreLoad > 0 ? coreLoad : d3dLoad;
-    }
-
     private void Update()
     {
         var hardware = _context.GetHardware();
@@ -75,122 +61,207 @@ public sealed class GpuMonitorService : IMonitorService
         }
         catch { return; }
 
-        if (gpus.Count == 0) return;
-
-        if (_currentGpu != null && !gpus.Contains(_currentGpu))
-            _currentGpu = null;
-
-        IHardware bestGpu;
-        if (_currentGpu != null && gpus.Count > 1)
+        if (gpus.Count == 0)
         {
-            float currentLoad = GetGpuLoad(_currentGpu);
+            AllGpus.Clear();
+            _gpuMap.Clear();
+            Data.Name = string.Empty;
+            return;
+        }
 
-            IHardware? challenger = null;
-            float challengerLoad = -1f;
-            foreach (var hw in gpus)
+        // Build key set for currently present GPUs
+        var currentKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var hw in gpus)
+        {
+            var key = GetGpuKey(hw);
+            currentKeys.Add(key);
+
+            if (!_gpuMap.TryGetValue(key, out var entry))
             {
-                if (ReferenceEquals(hw, _currentGpu)) continue;
-                float load = GetGpuLoad(hw);
-                if (load > challengerLoad)
-                {
-                    challenger = hw;
-                    challengerLoad = load;
-                }
+                var gpuData = new GpuData();
+                _gpuMap[key] = new GpuEntry(gpuData);
+                AllGpus.Add(gpuData);
             }
+
+            _gpuMap[key].Hardware = hw;
+        }
+
+        // Remove disconnected GPUs
+        foreach (var key in _gpuMap.Keys.ToList())
+        {
+            if (!currentKeys.Contains(key))
+            {
+                var removed = _gpuMap[key];
+                _gpuMap.Remove(key);
+                AllGpus.Remove(removed.GpuData);
+            }
+        }
+
+        // Sort: discrete GPUs first (by priority), then by index stability
+        AllGpus.Sort((a, b) =>
+        {
+            var aEntry = _gpuMap.Values.FirstOrDefault(e => ReferenceEquals(e.GpuData, a));
+            var bEntry = _gpuMap.Values.FirstOrDefault(e => ReferenceEquals(e.GpuData, b));
+            if (aEntry == null || bEntry == null || aEntry.Hardware == null || bEntry.Hardware == null) return 0;
+            return GpuPriority(bEntry.Hardware.HardwareType) - GpuPriority(aEntry.Hardware.HardwareType);
+        });
+
+        // Re-sort map values to match AllGpus order for priority selection
+        foreach (var kvp in _gpuMap)
+        {
+            ReadSensors(kvp.Value.Hardware!, kvp.Value.GpuData);
+        }
+
+        // Auto-select primary GPU for backward-compatible Data property
+        var bestEntry = SelectPrimaryGpu();
+        if (bestEntry != null)
+        {
+            // Copy data from selected GPU to primary Data
+            Data.Name = bestEntry.GpuData.Name;
+            Data.CoreLoad = bestEntry.GpuData.CoreLoad;
+            Data.Temperature = bestEntry.GpuData.Temperature;
+            Data.CoreClock = bestEntry.GpuData.CoreClock;
+            Data.MemoryClock = bestEntry.GpuData.MemoryClock;
+            Data.FanSpeed = bestEntry.GpuData.FanSpeed;
+            Data.FanPercent = bestEntry.GpuData.FanPercent;
+            Data.MemoryUsed = bestEntry.GpuData.MemoryUsed;
+            Data.MemoryTotal = bestEntry.GpuData.MemoryTotal;
+            Data.MemoryLoad = bestEntry.GpuData.MemoryLoad;
+            Data.Power = bestEntry.GpuData.Power;
+        }
+    }
+
+    private static string GetGpuKey(IHardware hw) => $"{hw.HardwareType}:{hw.Name}";
+
+    private GpuEntry? SelectPrimaryGpu()
+    {
+        if (_gpuMap.Count == 0) return null;
+
+        var entries = _gpuMap.Values.Where(e => e.Hardware != null).ToList();
+        if (entries.Count == 1) return entries[0];
+
+        // Find current primary match
+        GpuEntry? current = null;
+        foreach (var entry in entries)
+        {
+            if (entry.GpuData.Name == Data.Name && entry.GpuData.CoreLoad > 0 || entry.Hardware!.Name == Data.Name)
+            {
+                current = entry;
+                break;
+            }
+        }
+
+        // Default to highest priority GPU
+        GpuEntry? best = entries.MaxBy(e => GpuPriority(e.Hardware!.HardwareType));
+
+        if (current != null && best != null)
+        {
+            float currentLoad = GetGpuLoad(current.Hardware!);
+            float bestLoad = GetGpuLoad(best.Hardware!);
 
             bool shouldSwitch = false;
-            if (challenger != null)
-            {
-                if (currentLoad < IdleThreshold && challengerLoad < IdleThreshold)
-                    shouldSwitch = GpuPriority(challenger.HardwareType) > GpuPriority(_currentGpu.HardwareType);
-                else
-                    shouldSwitch = challengerLoad - currentLoad > SwitchThreshold;
-            }
+            if (currentLoad < IdleThreshold && bestLoad < IdleThreshold)
+                shouldSwitch = GpuPriority(best.Hardware!.HardwareType) > GpuPriority(current.Hardware!.HardwareType);
+            else
+                shouldSwitch = bestLoad - currentLoad > SwitchThreshold;
 
-            bestGpu = shouldSwitch ? challenger! : _currentGpu;
-        }
-        else
-        {
-            IHardware? best = null;
-            float bestLoad = -1f;
-            foreach (var hw in gpus)
-            {
-                float load = GetGpuLoad(hw);
-                bool isBetter = best == null
-                    || load > bestLoad + SwitchThreshold
-                    || (load < IdleThreshold && bestLoad < IdleThreshold && GpuPriority(hw.HardwareType) > GpuPriority(best.HardwareType));
-                if (isBetter) { best = hw; bestLoad = load; }
-            }
-            bestGpu = best ?? gpus[0];
+            return shouldSwitch ? best : current;
         }
 
-        _currentGpu = bestGpu;
+        return best;
+    }
 
+    private static float GetGpuLoad(IHardware hw)
+    {
+        float coreLoad = 0f, d3dLoad = 0f;
         try
         {
-            Data.Name = bestGpu.Name;
+            foreach (var sensor in hw.Sensors)
+            {
+                if (sensor.Value is not { } val) continue;
+                if (sensor.SensorType != SensorType.Load) continue;
+                if (sensor.Name == "GPU Core") coreLoad = val;
+                else if (sensor.Name.StartsWith("D3D") && val > d3dLoad) d3dLoad = val;
+            }
+        }
+        catch { }
+        return coreLoad > 0 ? coreLoad : d3dLoad;
+    }
 
-            Data.CoreLoad = 0;
-            Data.Temperature = 0;
-            Data.CoreClock = 0;
-            Data.MemoryClock = 0;
-            Data.FanSpeed = 0;
-            Data.FanPercent = 0;
-            Data.MemoryUsed = 0;
-            Data.MemoryTotal = 0;
-            Data.MemoryLoad = 0;
-            Data.Power = 0;
+    private static void ReadSensors(IHardware hw, GpuData data)
+    {
+        try
+        {
+            data.Name = hw.Name;
+            data.CoreLoad = 0;
+            data.Temperature = 0;
+            data.CoreClock = 0;
+            data.MemoryClock = 0;
+            data.FanSpeed = 0;
+            data.FanPercent = 0;
+            data.MemoryUsed = 0;
+            data.MemoryTotal = 0;
+            data.MemoryLoad = 0;
+            data.Power = 0;
 
             float bestD3DLoad = 0;
 
-            foreach (var sensor in bestGpu.Sensors)
+            foreach (var sensor in hw.Sensors)
             {
                 if (sensor.Value is not { } val) continue;
 
                 switch (sensor.SensorType)
                 {
                     case SensorType.Load when sensor.Name == "GPU Core":
-                        Data.CoreLoad = val;
+                        data.CoreLoad = val;
                         break;
                     case SensorType.Load when sensor.Name.StartsWith("D3D"):
                         if (val > bestD3DLoad) bestD3DLoad = val;
                         break;
                     case SensorType.Temperature when sensor.Name.Contains("GPU"):
-                        Data.Temperature = val;
+                        data.Temperature = val;
                         break;
                     case SensorType.Clock when sensor.Name == "GPU Core":
-                        Data.CoreClock = val;
+                        data.CoreClock = val;
                         break;
                     case SensorType.Clock when sensor.Name == "GPU Memory":
-                        Data.MemoryClock = val;
+                        data.MemoryClock = val;
                         break;
                     case SensorType.Fan:
-                        if (Data.FanSpeed == 0 || val > 0)
-                            Data.FanSpeed = val;
+                        if (data.FanSpeed == 0 || val > 0)
+                            data.FanSpeed = val;
                         break;
                     case SensorType.Control:
-                        if (Data.FanPercent == 0 || val > 0)
-                            Data.FanPercent = val;
+                        if (data.FanPercent == 0 || val > 0)
+                            data.FanPercent = val;
                         break;
                     case SensorType.SmallData when sensor.Name.Contains("Memory Used"):
-                        if (val > Data.MemoryUsed) Data.MemoryUsed = val;
+                        if (val > data.MemoryUsed) data.MemoryUsed = val;
                         break;
                     case SensorType.SmallData when sensor.Name.Contains("Memory Total"):
-                        if (val > Data.MemoryTotal) Data.MemoryTotal = val;
+                        if (val > data.MemoryTotal) data.MemoryTotal = val;
                         break;
                     case SensorType.Load when sensor.Name == "GPU Memory":
-                        Data.MemoryLoad = val;
+                        data.MemoryLoad = val;
                         break;
                     case SensorType.Power:
-                        Data.Power = val;
+                        data.Power = val;
                         break;
                 }
             }
 
-            if (Data.CoreLoad == 0 && bestD3DLoad > 0)
-                Data.CoreLoad = bestD3DLoad;
+            if (data.CoreLoad == 0 && bestD3DLoad > 0)
+                data.CoreLoad = bestD3DLoad;
         }
         catch { }
+    }
+
+    private sealed class GpuEntry
+    {
+        public IHardware? Hardware;
+        public readonly GpuData GpuData;
+
+        public GpuEntry(GpuData gpuData) => GpuData = gpuData;
     }
 
     public void Dispose() => Stop();

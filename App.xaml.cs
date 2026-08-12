@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Security.Principal;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,6 +21,7 @@ public partial class App : Application
     private DispatcherTimer? _iconTimer;
     private IconStyle _iconStyle = IconStyle.MiniChart;
     private TrayMetric _trayMetric = TrayMetric.CPU;
+    private MenuItem[]? _gpuMenuItems;
     private bool _isExiting;
     private bool _dashboardOpen;
     private DateTime _lastToggle = DateTime.MinValue;
@@ -96,18 +98,17 @@ public partial class App : Application
 
         contextMenu.Items.Add(new Separator());
 
-        // Tray metric submenu
+        // Tray metric submenu (GPU items are dynamic)
         var metricMenu = new MenuItem { Header = "Tray Metric" };
         var cpuMetric = new MenuItem { Header = "CPU", IsCheckable = true, IsChecked = true };
-        var gpuMetric = new MenuItem { Header = "GPU", IsCheckable = true };
         var ramMetric = new MenuItem { Header = "RAM", IsCheckable = true };
 
-        cpuMetric.Click += (_, _) => SetTrayMetric(TrayMetric.CPU, cpuMetric, gpuMetric, ramMetric);
-        gpuMetric.Click += (_, _) => SetTrayMetric(TrayMetric.GPU, cpuMetric, gpuMetric, ramMetric);
-        ramMetric.Click += (_, _) => SetTrayMetric(TrayMetric.RAM, cpuMetric, gpuMetric, ramMetric);
+        cpuMetric.Click += (_, _) => SetTrayMetric(TrayMetric.CPU, metricMenu);
+        ramMetric.Click += (_, _) => SetTrayMetric(TrayMetric.RAM, metricMenu);
 
         metricMenu.Items.Add(cpuMetric);
-        metricMenu.Items.Add(gpuMetric);
+        BuildGpuMenuItems(metricMenu);
+        metricMenu.Items.Add(new Separator());
         metricMenu.Items.Add(ramMetric);
         contextMenu.Items.Add(metricMenu);
 
@@ -176,23 +177,88 @@ public partial class App : Application
         _trayIcon.ForceCreate();
     }
 
-    private void SetTrayMetric(TrayMetric metric, params MenuItem[] items)
+    private void SetTrayMetric(TrayMetric metric, MenuItem metricMenu)
     {
         _trayMetric = metric;
-        foreach (var item in items)
-            item.IsChecked = false;
 
-        var selected = metric switch
+        // Uncheck all checkable items in the menu
+        foreach (var item in metricMenu.Items.OfType<MenuItem>())
+            if (item.IsCheckable && !string.IsNullOrEmpty(item.Header?.ToString()))
+                item.IsChecked = false;
+
+        // Check the selected one
+        var headers = metricMenu.Items.OfType<MenuItem>().ToDictionary(m => m.Header?.ToString()!, m => m);
+        if (metric == TrayMetric.CPU)
         {
-            TrayMetric.CPU => items[0],
-            TrayMetric.GPU => items[1],
-            TrayMetric.RAM => items[2],
-            _ => items[0]
-        };
-        selected.IsChecked = true;
+            var item = headers.GetValueOrDefault("CPU");
+            if (item != null) item.IsChecked = true;
+        }
+        else if (metric == TrayMetric.RAM)
+        {
+            var item = headers.GetValueOrDefault("RAM");
+            if (item != null) item.IsChecked = true;
+        }
+        else if (metric == TrayMetric.GPU && _viewModel != null && _viewModel.SelectedTrayGpuIndex < _viewModel.Gpus.Count)
+        {
+            var gpu = _viewModel.Gpus[_viewModel.SelectedTrayGpuIndex];
+            var item = headers.GetValueOrDefault(gpu.DisplayName);
+            if (item != null) item.IsChecked = true;
+        }
 
         if (_viewModel != null)
             _viewModel.NeedsGpuInBackground = metric == TrayMetric.GPU;
+    }
+
+    private void BuildGpuMenuItems(MenuItem metricMenu)
+    {
+        // Remove old GPU items
+        if (_gpuMenuItems != null)
+        {
+            foreach (var item in _gpuMenuItems)
+                metricMenu.Items.Remove(item);
+        }
+
+        var newItems = new List<MenuItem>();
+
+        if (_viewModel?.Gpus != null && _viewModel.Gpus.Count > 0)
+        {
+            for (int i = 0; i < _viewModel.Gpus.Count; i++)
+            {
+                var gpu = _viewModel.Gpus[i];
+                var index = i; // capture for closure
+                var item = new MenuItem
+                {
+                    Header = gpu.DisplayName,
+                    IsCheckable = true,
+                };
+                bool isSelected = _trayMetric == TrayMetric.GPU && _viewModel.SelectedTrayGpuIndex == index;
+                item.IsChecked = isSelected;
+
+                item.Click += (_, _) =>
+                {
+                    _trayMetric = TrayMetric.GPU;
+                    if (_viewModel != null)
+                    {
+                        _viewModel.SelectedTrayGpuIndex = index;
+                        _viewModel.NeedsGpuInBackground = true;
+                    }
+                    // Update check states
+                    foreach (var m in metricMenu.Items.OfType<MenuItem>())
+                        if (m.IsCheckable && !string.IsNullOrEmpty(m.Header?.ToString()))
+                            m.IsChecked = false;
+                    item.IsChecked = true;
+                };
+
+                newItems.Add(item);
+            }
+        }
+
+        _gpuMenuItems = newItems.ToArray();
+
+        // Insert GPU items after CPU, before separator + RAM
+        int insertIndex = 1; // After "CPU" at index 0
+        for (int i = 0; i < _gpuMenuItems.Length; i++)
+            metricMenu.Items.Insert(insertIndex + i, _gpuMenuItems[i]);
     }
 
     private void SetIconStyle(IconStyle style, params MenuItem[] items)
@@ -257,10 +323,13 @@ public partial class App : Application
     private float GetCurrentMetricValue()
     {
         if (_viewModel == null) return 0;
+
+        if (_trayMetric == TrayMetric.GPU && _viewModel.SelectedTrayGpuIndex < _viewModel.Gpus.Count)
+            return (float)_viewModel.Gpus[_viewModel.SelectedTrayGpuIndex].Data.CoreLoad;
+
         return _trayMetric switch
         {
             TrayMetric.CPU => _viewModel.Cpu.TotalLoad,
-            TrayMetric.GPU => _viewModel.Gpu.CoreLoad,
             TrayMetric.RAM => _viewModel.Ram.Load,
             _ => _viewModel.Cpu.TotalLoad
         };
@@ -269,10 +338,16 @@ public partial class App : Application
     private string GetTooltip()
     {
         if (_viewModel == null) return "TrayStats";
+
+        if (_trayMetric == TrayMetric.GPU && _viewModel.SelectedTrayGpuIndex < _viewModel.Gpus.Count)
+        {
+            var gpu = _viewModel.Gpus[_viewModel.SelectedTrayGpuIndex];
+            return $"{gpu.DisplayName}: {gpu.Data.CoreLoad:F0}%  |  {gpu.Data.Temperature:F0}°C";
+        }
+
         return _trayMetric switch
         {
             TrayMetric.CPU => $"CPU: {_viewModel.CpuSummary}  |  RAM: {_viewModel.RamSummary}",
-            TrayMetric.GPU => $"GPU: {_viewModel.GpuSummary}  |  {_viewModel.Gpu.Temperature:F0}°C",
             TrayMetric.RAM => $"RAM: {_viewModel.RamSummary}",
             _ => $"CPU: {_viewModel.CpuSummary}"
         };
@@ -289,6 +364,11 @@ public partial class App : Application
             oldIcon?.Dispose();
 
             _trayIcon.ToolTipText = GetTooltip();
+
+            // Rebuild GPU menu items if GPU count changed
+            if (_gpuMenuItems == null || _gpuMenuItems.Length != _viewModel.Gpus.Count)
+                if (_trayIcon.ContextMenu is ContextMenu cm)
+                    BuildGpuMenuItems(cm.Items.OfType<MenuItem>().FirstOrDefault(m => m.Header?.ToString() == "Tray Metric")!);
         }
         catch
         {
