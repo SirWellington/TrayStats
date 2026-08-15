@@ -146,8 +146,15 @@ public sealed class ProcessMonitorService : IMonitorService
                 "SELECT TotalVisibleMemorySize FROM Win32_OperatingSystem");
             foreach (var obj in searcher.Get())
             {
-                var kb = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
-                return kb / 1024.0;
+                try
+                {
+                    var kb = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
+                    return kb / 1024.0;
+                }
+                finally
+                {
+                    obj.Dispose();
+                }
             }
         }
         catch { }
