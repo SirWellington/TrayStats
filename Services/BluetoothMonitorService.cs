@@ -22,9 +22,16 @@ public sealed class BluetoothMonitorService : IMonitorService
 
     public async void Start()
     {
-        await UpdateAsync();
-        DataUpdated?.Invoke();
-        _timer.Start();
+        try
+        {
+            await UpdateAsync();
+            DataUpdated?.Invoke();
+        }
+        catch { }
+        finally
+        {
+            _timer.Start();
+        }
     }
 
     public void Stop() => _timer.Stop();

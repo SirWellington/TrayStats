@@ -11,6 +11,7 @@ public sealed class WeatherService : IMonitorService
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
     private readonly System.Timers.Timer _timer;
+    private int _isUpdating;
     private double _latitude;
     private double _longitude;
     private bool _locationResolved;
@@ -27,16 +28,34 @@ public sealed class WeatherService : IMonitorService
 
     public async void Start()
     {
-        await ResolveLocationAsync();
-        await FetchWeatherAsync();
-        _timer.Start();
+        try
+        {
+            await ResolveLocationAsync();
+            await FetchWeatherAsync();
+        }
+        catch { }
+        finally
+        {
+            _timer.Start();
+        }
     }
 
     public void Stop() => _timer.Stop();
 
     private async void OnTimerElapsed(object? sender, ElapsedEventArgs e)
     {
-        await FetchWeatherAsync();
+        if (Interlocked.CompareExchange(ref _isUpdating, 1, 0) != 0)
+            return;
+
+        try
+        {
+            await FetchWeatherAsync();
+        }
+        catch { }
+        finally
+        {
+            Interlocked.Exchange(ref _isUpdating, 0);
+        }
     }
 
     private async Task ResolveLocationAsync()

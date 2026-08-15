@@ -353,15 +353,24 @@ public partial class App : Application
         };
     }
 
+    private float _lastIconValue = -1;
+
     private void UpdateTrayIcon(object? sender, EventArgs e)
     {
         if (_trayIcon == null || _viewModel == null) return;
 
         try
         {
-            var oldIcon = _trayIcon.Icon;
-            _trayIcon.Icon = IconGenerator.CreateIcon(GetCurrentMetricValue(), _iconStyle);
-            oldIcon?.Dispose();
+            var currentValue = GetCurrentMetricValue();
+            bool valueChanged = Math.Abs(currentValue - _lastIconValue) >= 0.5f;
+
+            if (valueChanged)
+            {
+                // Dispose old icon BEFORE assigning the new one so WPF composition engine releases the visual resource immediately
+                _trayIcon.Icon?.Dispose();
+                _trayIcon.Icon = IconGenerator.CreateIcon(currentValue, _iconStyle);
+                _lastIconValue = currentValue;
+            }
 
             _trayIcon.ToolTipText = GetTooltip();
 
@@ -370,9 +379,9 @@ public partial class App : Application
                 if (_trayIcon.ContextMenu is ContextMenu cm)
                     BuildGpuMenuItems(cm.Items.OfType<MenuItem>().FirstOrDefault(m => m.Header?.ToString() == "Tray Metric")!);
         }
-        catch
+        catch (Exception ex)
         {
-            // Swallow icon update errors
+            LogException(ex);
         }
     }
 
