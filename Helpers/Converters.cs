@@ -83,6 +83,31 @@ public class SensorValueConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+public class WeatherTemperatureConverter : IValueConverter
+{
+    public static bool UseFahrenheit { get; set; }
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        double v = 0;
+        if (value is float f) v = f;
+        else if (value is double d) v = d;
+
+        if (v == 0 && parameter?.ToString() != "no_na")
+            return "N/A";
+
+        bool useF = UseFahrenheit;
+        string fmt = parameter as string ?? "{0:F0}";
+        char unit = useF ? 'F' : 'C';
+
+        double displayValue = useF ? v * 9.0 / 5.0 + 32 : v;
+        return string.Format(fmt, displayValue) + (char)0x00B0 + unit;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 /// <summary>
 /// Maps a battery percentage (0-100) to a gradient color:
 ///   0-20%  red -> orange

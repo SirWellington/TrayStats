@@ -24,6 +24,7 @@ public partial class App : Application
     private MenuItem[]? _gpuMenuItems;
     private bool _isExiting;
     private bool _dashboardOpen;
+    private bool _keepVisible;
     private DateTime _lastToggle = DateTime.MinValue;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -141,6 +142,17 @@ public partial class App : Application
         AddSectionToggle(sectionsMenu, "Uptime", () => _viewModel!.Sections.ShowUptime, v => _viewModel!.Sections.ShowUptime = v);
         contextMenu.Items.Add(sectionsMenu);
 
+        var unitsMenu = new MenuItem { Header = "Units" };
+        var fahrenheitItem = new MenuItem
+        {
+            Header = "Fahrenheit",
+            IsCheckable = true,
+            IsChecked = _viewModel!.Sections.UseFahrenheit
+        };
+        fahrenheitItem.Click += (_, _) => SetUseFahrenheit(fahrenheitItem.IsChecked);
+        unitsMenu.Items.Add(fahrenheitItem);
+        contextMenu.Items.Add(unitsMenu);
+
         contextMenu.Items.Add(new Separator());
 
         if (!IsRunningAsAdmin())
@@ -158,6 +170,19 @@ public partial class App : Application
         };
         startupItem.Click += (_, _) => StartupHelper.SetStartup(startupItem.IsChecked);
         contextMenu.Items.Add(startupItem);
+
+        var keepVisibleItem = new MenuItem
+        {
+            Header = "Keep Visible",
+            IsCheckable = true,
+            IsChecked = _keepVisible
+        };
+        keepVisibleItem.Click += (_, _) =>
+        {
+            _keepVisible = keepVisibleItem.IsChecked;
+            if (_popup != null) _popup.KeepVisible = _keepVisible;
+        };
+        contextMenu.Items.Add(keepVisibleItem);
 
         contextMenu.Items.Add(new Separator());
 
@@ -275,6 +300,13 @@ public partial class App : Application
             _ => items[2]
         };
         selected.IsChecked = true;
+    }
+
+    private void SetUseFahrenheit(bool useF)
+    {
+        WeatherTemperatureConverter.UseFahrenheit = useF;
+        _viewModel!.Sections.UseFahrenheit = useF;
+        _viewModel.RefreshWeatherDisplay();
     }
 
     private static void AddSectionToggle(MenuItem parent, string label, Func<bool> getter, Action<bool> setter)

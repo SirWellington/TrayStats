@@ -21,6 +21,11 @@ public partial class DashboardPopup : Window
 
     public event Action? DashboardHidden;
 
+    /// <summary>
+    /// When true, the window does not hide on deactivation.
+    /// </summary>
+    public bool KeepVisible { get; set; }
+
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.OldValue is DashboardViewModel oldVm)
@@ -104,6 +109,7 @@ public partial class DashboardPopup : Window
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
+        if (KeepVisible) return;
         Hide();
         DashboardHidden?.Invoke();
     }

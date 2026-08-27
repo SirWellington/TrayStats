@@ -340,6 +340,17 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         });
     }
 
+    public void RefreshWeatherDisplay()
+    {
+        _dispatcher.BeginInvoke(() =>
+        {
+            ForecastItems.Clear();
+            foreach (var f in Weather.LatestForecast)
+                ForecastItems.Add(f);
+            OnPropertyChanged(nameof(Weather));
+        });
+    }
+
     public event Action? InvalidateCharts;
 
     private static void PushValue(List<double> values, double newValue)

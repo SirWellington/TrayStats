@@ -14,4 +14,5 @@ public partial class SectionVisibility : ObservableObject
     [ObservableProperty] private bool _showProcesses = true;
     [ObservableProperty] private bool _showBluetooth = true;
     [ObservableProperty] private bool _showUptime = true;
+    [ObservableProperty] private bool _useFahrenheit;
 }

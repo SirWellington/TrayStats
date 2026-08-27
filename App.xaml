@@ -9,6 +9,7 @@
         <helpers:PercentToWidthConverter x:Key="PercentToWidth" MaxWidth="150"/>
         <helpers:PercentToWidthLargeConverter x:Key="PercentToWidthLarge" MaxWidth="290"/>
         <helpers:SensorValueConverter x:Key="SensorValue"/>
+        <helpers:WeatherTemperatureConverter x:Key="WeatherTemp"/>
         <helpers:BatteryLevelToBrushConverter x:Key="BatteryLevelToBrush"/>
 
         <!-- Metric Row Container -->

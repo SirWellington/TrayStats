@@ -75,8 +75,8 @@
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Weather.City}" Foreground="#B0FFFFFF" FontSize="11"/>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Weather.Temperature, StringFormat={}{0:F0}°}"
-                                               Foreground="#DDFFFFFF" FontSize="16" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Weather.Temperature, Converter={StaticResource WeatherTemp}}"
+                                                Foreground="#DDFFFFFF" FontSize="16" FontWeight="SemiBold"/>
                                     <TextBlock Text="{Binding Weather.WeatherCondition}"
                                                Foreground="#80FFFFFF" FontSize="11" VerticalAlignment="Bottom" Margin="6,0,0,2"/>
                                 </StackPanel>
@@ -105,7 +105,7 @@
 
                                 <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Feels Like"/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource DetailValue}"
-                                           Text="{Binding Weather.FeelsLike, StringFormat={}{0:F0}°C}"/>
+                                            Text="{Binding Weather.FeelsLike, Converter={StaticResource WeatherTemp}}"/>
 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Humidity"/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailValue}"
@@ -133,11 +133,11 @@
                                             <TextBlock Text="{Binding WeatherIcon}" FontFamily="Segoe UI Symbol"
                                                        FontSize="18" Foreground="{Binding WeatherIconColor}" HorizontalAlignment="Center" Margin="0,2"/>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <TextBlock Text="{Binding High, StringFormat={}{0:F0}°}"
-                                                           Foreground="#DDFFFFFF" FontSize="10" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding High, Converter={StaticResource WeatherTemp}}"
+                                                            Foreground="#DDFFFFFF" FontSize="10" FontWeight="SemiBold"/>
                                                 <TextBlock Text=" / " Foreground="#60FFFFFF" FontSize="10"/>
-                                                <TextBlock Text="{Binding Low, StringFormat={}{0:F0}°}"
-                                                           Foreground="#80FFFFFF" FontSize="10"/>
+                                                <TextBlock Text="{Binding Low, Converter={StaticResource WeatherTemp}, ConverterParameter=no_na}"
+                                                            Foreground="#80FFFFFF" FontSize="10"/>
                                             </StackPanel>
                                             <TextBlock Text="{Binding PrecipitationProbability, StringFormat={}{0}% rain}"
                                                        Foreground="#60FFFFFF" FontSize="9" HorizontalAlignment="Center" Margin="0,1,0,0"/>
