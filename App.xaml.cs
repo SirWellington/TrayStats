@@ -26,6 +26,11 @@ public partial class App : Application
     private bool _dashboardOpen;
     private bool _keepVisible;
     private DateTime _lastToggle = DateTime.MinValue;
+    private IntPtr _currentHIcon = IntPtr.Zero;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr handle);
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -200,6 +205,7 @@ public partial class App : Application
 
         _trayIcon.TrayLeftMouseDown += (_, _) => TogglePopup();
         _trayIcon.ForceCreate();
+        _currentHIcon = icon.Handle;
     }
 
     private void SetTrayMetric(TrayMetric metric, MenuItem metricMenu)
@@ -398,9 +404,7 @@ public partial class App : Application
 
             if (valueChanged)
             {
-                // Dispose old icon BEFORE assigning the new one so WPF composition engine releases the visual resource immediately
-                _trayIcon.Icon?.Dispose();
-                _trayIcon.Icon = IconGenerator.CreateIcon(currentValue, _iconStyle);
+                SetTrayIcon(IconGenerator.CreateIcon(currentValue, _iconStyle));
                 _lastIconValue = currentValue;
             }
 
@@ -414,6 +418,30 @@ public partial class App : Application
         catch (Exception ex)
         {
             LogException(ex);
+        }
+    }
+
+    // IconGenerator returns an Icon created via Icon.FromHandle(HICON), which does NOT own the
+    // GDI icon handle (Icon.Dispose() is a no-op for it). If we don't DestroyIcon it, one GDI
+    // handle leaks per icon update until the process exhausts its GDI quota. The shell keeps its
+    // own copy after Shell_NotifyIcon, so it is safe to destroy the previous handle once a new
+    // icon has been assigned.
+    private void SetTrayIcon(Icon newIcon)
+    {
+        if (_trayIcon == null) return;
+        IntPtr old = _currentHIcon;
+        _trayIcon.Icon = newIcon;
+        _currentHIcon = newIcon.Handle;
+        if (old != IntPtr.Zero)
+            DestroyIcon(old);
+    }
+
+    private void ReleaseTrayIconHandle()
+    {
+        if (_currentHIcon != IntPtr.Zero)
+        {
+            DestroyIcon(_currentHIcon);
+            _currentHIcon = IntPtr.Zero;
         }
     }
 
@@ -465,6 +493,7 @@ public partial class App : Application
             _trayIcon.Dispose();
             _trayIcon = null;
         }
+        ReleaseTrayIconHandle();
 
         Shutdown();
     }
@@ -484,6 +513,7 @@ public partial class App : Application
     {
         _viewModel?.Dispose();
         _trayIcon?.Dispose();
+        ReleaseTrayIconHandle();
         base.OnExit(e);
     }
 }
