@@ -19,6 +19,7 @@ public partial class App : Application
     private DashboardPopup? _popup;
     private DashboardViewModel? _viewModel;
     private DispatcherTimer? _iconTimer;
+    private Settings _settings = new();
     private IconStyle _iconStyle = IconStyle.MiniChart;
     private TrayMetric _trayMetric = TrayMetric.CPU;
     private MenuItem[]? _gpuMenuItems;
@@ -62,6 +63,8 @@ public partial class App : Application
 
         _viewModel = new DashboardViewModel();
 
+        LoadSettings();
+
         // Dump all sensors to a log file for diagnostics
         try
         {
@@ -73,7 +76,8 @@ public partial class App : Application
 
         _popup = new DashboardPopup
         {
-            DataContext = _viewModel
+            DataContext = _viewModel,
+            KeepVisible = _keepVisible
         };
         _popup.DashboardHidden += () =>
         {
@@ -106,8 +110,8 @@ public partial class App : Application
 
         // Tray metric submenu (GPU items are dynamic)
         var metricMenu = new MenuItem { Header = "Tray Metric" };
-        var cpuMetric = new MenuItem { Header = "CPU", IsCheckable = true, IsChecked = true };
-        var ramMetric = new MenuItem { Header = "RAM", IsCheckable = true };
+        var cpuMetric = new MenuItem { Header = "CPU", IsCheckable = true, IsChecked = _trayMetric == TrayMetric.CPU };
+        var ramMetric = new MenuItem { Header = "RAM", IsCheckable = true, IsChecked = _trayMetric == TrayMetric.RAM };
 
         cpuMetric.Click += (_, _) => SetTrayMetric(TrayMetric.CPU, metricMenu);
         ramMetric.Click += (_, _) => SetTrayMetric(TrayMetric.RAM, metricMenu);
@@ -120,9 +124,9 @@ public partial class App : Application
 
         // Icon style submenu
         var styleMenu = new MenuItem { Header = "Icon Style" };
-        var barItem = new MenuItem { Header = "Bar", IsCheckable = true };
-        var pctItem = new MenuItem { Header = "Percentage", IsCheckable = true };
-        var chartItem = new MenuItem { Header = "Mini Chart", IsCheckable = true, IsChecked = true };
+        var barItem = new MenuItem { Header = "Bar", IsCheckable = true, IsChecked = _iconStyle == IconStyle.Bar };
+        var pctItem = new MenuItem { Header = "Percentage", IsCheckable = true, IsChecked = _iconStyle == IconStyle.Percentage };
+        var chartItem = new MenuItem { Header = "Mini Chart", IsCheckable = true, IsChecked = _iconStyle == IconStyle.MiniChart };
 
         barItem.Click += (_, _) => SetIconStyle(IconStyle.Bar, barItem, pctItem, chartItem);
         pctItem.Click += (_, _) => SetIconStyle(IconStyle.Percentage, barItem, pctItem, chartItem);
@@ -186,6 +190,7 @@ public partial class App : Application
         {
             _keepVisible = keepVisibleItem.IsChecked;
             if (_popup != null) _popup.KeepVisible = _keepVisible;
+            SaveSettings();
         };
         contextMenu.Items.Add(keepVisibleItem);
 
@@ -238,6 +243,8 @@ public partial class App : Application
 
         if (_viewModel != null)
             _viewModel.NeedsGpuInBackground = metric == TrayMetric.GPU;
+
+        SaveSettings();
     }
 
     private void BuildGpuMenuItems(MenuItem metricMenu)
@@ -278,6 +285,7 @@ public partial class App : Application
                         if (m.IsCheckable && !string.IsNullOrEmpty(m.Header?.ToString()))
                             m.IsChecked = false;
                     item.IsChecked = true;
+                    SaveSettings();
                 };
 
                 newItems.Add(item);
@@ -306,6 +314,8 @@ public partial class App : Application
             _ => items[2]
         };
         selected.IsChecked = true;
+
+        SaveSettings();
     }
 
     private void SetUseFahrenheit(bool useF)
@@ -313,9 +323,10 @@ public partial class App : Application
         WeatherTemperatureConverter.UseFahrenheit = useF;
         _viewModel!.Sections.UseFahrenheit = useF;
         _viewModel.RefreshWeatherDisplay();
+        SaveSettings();
     }
 
-    private static void AddSectionToggle(MenuItem parent, string label, Func<bool> getter, Action<bool> setter)
+    private void AddSectionToggle(MenuItem parent, string label, Func<bool> getter, Action<bool> setter)
     {
         var item = new MenuItem
         {
@@ -323,8 +334,69 @@ public partial class App : Application
             IsCheckable = true,
             IsChecked = getter()
         };
-        item.Click += (_, _) => setter(item.IsChecked);
+        item.Click += (_, _) =>
+        {
+            setter(item.IsChecked);
+            SaveSettings();
+        };
         parent.Items.Add(item);
+    }
+
+    /// <summary>
+    /// Restores the user's saved selections (tray metric, icon style, sections, ...)
+    /// into the live state.
+    /// </summary>
+    private void LoadSettings()
+    {
+        _settings = SettingsStore.Load();
+        _iconStyle = _settings.IconStyle;
+        _trayMetric = _settings.TrayMetric;
+        _keepVisible = _settings.KeepVisible;
+        _viewModel!.SelectedTrayGpuIndex = _settings.TrayGpuIndex;
+        _viewModel.NeedsGpuInBackground = _trayMetric == TrayMetric.GPU;
+
+        var sections = _viewModel.Sections;
+        sections.ShowWeather = _settings.ShowWeather;
+        sections.ShowCpu = _settings.ShowCpu;
+        sections.ShowGpu = _settings.ShowGpu;
+        sections.ShowRam = _settings.ShowRam;
+        sections.ShowDisk = _settings.ShowDisk;
+        sections.ShowBattery = _settings.ShowBattery;
+        sections.ShowNet = _settings.ShowNet;
+        sections.ShowProcesses = _settings.ShowProcesses;
+        sections.ShowBluetooth = _settings.ShowBluetooth;
+        sections.ShowUptime = _settings.ShowUptime;
+        sections.UseFahrenheit = _settings.UseFahrenheit;
+        WeatherTemperatureConverter.UseFahrenheit = _settings.UseFahrenheit;
+    }
+
+    /// <summary>
+    /// Captures the current selections and persists them so they survive a restart.
+    /// </summary>
+    private void SaveSettings()
+    {
+        _settings.TrayMetric = _trayMetric;
+        _settings.TrayGpuIndex = _viewModel?.SelectedTrayGpuIndex ?? 0;
+        _settings.IconStyle = _iconStyle;
+        _settings.KeepVisible = _keepVisible;
+
+        if (_viewModel != null)
+        {
+            var s = _viewModel.Sections;
+            _settings.ShowWeather = s.ShowWeather;
+            _settings.ShowCpu = s.ShowCpu;
+            _settings.ShowGpu = s.ShowGpu;
+            _settings.ShowRam = s.ShowRam;
+            _settings.ShowDisk = s.ShowDisk;
+            _settings.ShowBattery = s.ShowBattery;
+            _settings.ShowNet = s.ShowNet;
+            _settings.ShowProcesses = s.ShowProcesses;
+            _settings.ShowBluetooth = s.ShowBluetooth;
+            _settings.ShowUptime = s.ShowUptime;
+            _settings.UseFahrenheit = s.UseFahrenheit;
+        }
+
+        SettingsStore.Save(_settings);
     }
 
     private void TogglePopup()
@@ -485,6 +557,7 @@ public partial class App : Application
         _isExiting = true;
         _iconTimer?.Stop();
         _popup?.Hide();
+        SaveSettings();
         _viewModel?.Dispose();
 
         if (_trayIcon != null)
