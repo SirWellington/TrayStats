@@ -27,9 +27,10 @@
                       HorizontalScrollBarVisibility="Disabled">
         <StackPanel>
             <!-- Header -->
-            <Grid Margin="4,2,4,6">
+            <Grid Margin="4,2,4,6" MouseLeftButtonDown="Header_MouseLeftButtonDown"
+                  Background="Transparent">
                 <TextBlock Text="TrayStats" FontSize="11" Foreground="#80FFFFFF"
-                           FontWeight="SemiBold"/>
+                           FontWeight="SemiBold" IsHitTestVisible="False"/>
                 <Button Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"
                         HorizontalAlignment="Right" VerticalAlignment="Center"
                         Background="Transparent" Foreground="#80FFFFFF" BorderThickness="0"
