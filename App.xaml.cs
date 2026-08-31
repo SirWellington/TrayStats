@@ -26,6 +26,8 @@ public partial class App : Application
     private bool _isExiting;
     private bool _dashboardOpen;
     private bool _keepVisible;
+    private bool _sidebarMode;
+    private MenuItem? _sidebarMenuItem;
     private DateTime _lastToggle = DateTime.MinValue;
     private IntPtr _currentHIcon = IntPtr.Zero;
 
@@ -85,8 +87,19 @@ public partial class App : Application
             _lastToggle = DateTime.UtcNow;
             _viewModel?.SetDashboardActive(false);
         };
+        _popup.SidebarModeDisabled += () =>
+        {
+            // The user closed a docked sidebar, which turned the mode off.
+            _sidebarMode = false;
+            if (_sidebarMenuItem != null) _sidebarMenuItem.IsChecked = false;
+            SaveSettings();
+        };
 
         CreateTrayIcon();
+
+        // Restore a previously docked sidebar.
+        if (_settings.SidebarMode)
+            SetSidebarMode(true);
 
         _iconTimer = new DispatcherTimer
         {
@@ -193,6 +206,16 @@ public partial class App : Application
             SaveSettings();
         };
         contextMenu.Items.Add(keepVisibleItem);
+
+        var sidebarItem = new MenuItem
+        {
+            Header = "Sidebar Mode",
+            IsCheckable = true,
+            IsChecked = _sidebarMode
+        };
+        sidebarItem.Click += (_, _) => SetSidebarMode(sidebarItem.IsChecked);
+        _sidebarMenuItem = sidebarItem;
+        contextMenu.Items.Add(sidebarItem);
 
         contextMenu.Items.Add(new Separator());
 
@@ -352,6 +375,7 @@ public partial class App : Application
         _iconStyle = _settings.IconStyle;
         _trayMetric = _settings.TrayMetric;
         _keepVisible = _settings.KeepVisible;
+        _sidebarMode = _settings.SidebarMode;
         _viewModel!.SelectedTrayGpuIndex = _settings.TrayGpuIndex;
         _viewModel.NeedsGpuInBackground = _trayMetric == TrayMetric.GPU;
 
@@ -379,6 +403,7 @@ public partial class App : Application
         _settings.TrayGpuIndex = _viewModel?.SelectedTrayGpuIndex ?? 0;
         _settings.IconStyle = _iconStyle;
         _settings.KeepVisible = _keepVisible;
+        _settings.SidebarMode = _sidebarMode;
 
         if (_viewModel != null)
         {
@@ -407,6 +432,15 @@ public partial class App : Application
         if ((now - _lastToggle).TotalMilliseconds < 400) return;
         _lastToggle = now;
 
+        if (_popup.SidebarMode)
+        {
+            // A docked sidebar is persistent; a left-click just brings it to front.
+            _dashboardOpen = true;
+            _viewModel?.SetDashboardActive(true);
+            _popup.Activate();
+            return;
+        }
+
         if (_dashboardOpen)
         {
             _dashboardOpen = false;
@@ -428,6 +462,27 @@ public partial class App : Application
         _lastToggle = DateTime.UtcNow;
         _viewModel?.SetDashboardActive(true);
         _popup?.ShowAtTray();
+    }
+
+    private void SetSidebarMode(bool enabled)
+    {
+        if (_popup == null || _isExiting) return;
+
+        _sidebarMode = enabled;
+        if (_sidebarMenuItem != null) _sidebarMenuItem.IsChecked = enabled;
+
+        if (enabled)
+        {
+            _dashboardOpen = true;
+            _viewModel?.SetDashboardActive(true);
+            _popup.DockToSide();
+        }
+        else
+        {
+            _popup.Undock();
+        }
+
+        SaveSettings();
     }
 
     private float GetCurrentMetricValue()
@@ -556,6 +611,7 @@ public partial class App : Application
     {
         _isExiting = true;
         _iconTimer?.Stop();
+        _popup?.ReleaseDock();
         _popup?.Hide();
         SaveSettings();
         _viewModel?.Dispose();
@@ -584,6 +640,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _popup?.ReleaseDock();
         _viewModel?.Dispose();
         _trayIcon?.Dispose();
         ReleaseTrayIconHandle();

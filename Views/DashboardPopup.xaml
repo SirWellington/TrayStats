@@ -13,7 +13,7 @@
         Background="Transparent"
         Deactivated="Window_Deactivated">
 
-    <Border Background="#E6202020"
+    <Border x:Name="RootBorder" Background="#E6202020"
             CornerRadius="8"
             BorderBrush="#40FFFFFF"
             BorderThickness="1"

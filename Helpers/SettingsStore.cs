@@ -13,6 +13,7 @@ public class Settings
     public int TrayGpuIndex { get; set; }
     public IconStyle IconStyle { get; set; } = IconStyle.MiniChart;
     public bool KeepVisible { get; set; }
+    public bool SidebarMode { get; set; }
 
     public bool ShowWeather { get; set; } = true;
     public bool ShowCpu { get; set; } = true;
