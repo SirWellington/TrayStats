@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -5,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using TrayStats.Helpers;
 using TrayStats.Models;
 using TrayStats.ViewModels;
@@ -46,6 +48,8 @@ public partial class DashboardPopup : Window
     /// True while the window is docked to the screen edge as a sidebar.
     /// </summary>
     public bool SidebarMode { get; private set; }
+
+    public bool IsDockSuspended => _dockSuspended;
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -92,6 +96,9 @@ public partial class DashboardPopup : Window
     {
         if (SidebarMode)
         {
+            if (_dockSuspended)
+                return;
+
             // Keep the docked sidebar visible when it is re-shown.
             Show();
             Activate();
@@ -119,6 +126,13 @@ public partial class DashboardPopup : Window
     // route is the one that sticks.
 
     private IntPtr _dockedMonitor = IntPtr.Zero;
+    private RECT _dockMonitorRect;
+    private RECT _dockWorkRect;
+    private int _dockWidthPx;
+    private double _dockWidthDip;
+    private DispatcherTimer? _remoteDesktopTimer;
+    private IntPtr _fullscreenRemoteDesktop = IntPtr.Zero;
+    private bool _dockSuspended;
 
     /// <summary>
     /// Docks the window to the right edge of the monitor it is currently on,
@@ -128,16 +142,14 @@ public partial class DashboardPopup : Window
     public void DockToSide()
     {
         IntPtr hwnd = new WindowInteropHelper(this).EnsureHandle();
+        bool resuming = _dockSuspended;
+        if (!SidebarMode)
+            _dockWidthDip = Width;
 
         // Re-dock cleanly if we were already docked (e.g. after a DPI change).
-        if (SidebarMode)
+        if (SidebarMode && !resuming)
         {
-            var existing = new APPBARDATA
-            {
-                cbSize = (uint)Marshal.SizeOf<APPBARDATA>(),
-                hWnd = hwnd
-            };
-            SHAppBarMessage(ABM_REMOVE, ref existing);
+            RemoveAppBar();
             SidebarMode = false;
         }
 
@@ -150,7 +162,7 @@ public partial class DashboardPopup : Window
             return;
 
         double scale = GetMonitorDpiScale(hMonitor);
-        int widthPx = (int)Math.Round(Width * scale);
+        int widthPx = (int)Math.Round(_dockWidthDip * scale);
 
         var workAreaBefore = SystemParameters.WorkArea;
 
@@ -210,13 +222,120 @@ public partial class DashboardPopup : Window
         RootBorder.CornerRadius = new CornerRadius(0);
 
         _dockedMonitor = hMonitor;
+        _dockMonitorRect = mi.rcMonitor;
+        _dockWorkRect = mi.rcWork;
+        _dockWidthPx = widthPx;
         SidebarMode = true;
+        _dockSuspended = false;
+        Topmost = true;
 
-        if (!IsVisible)
+        // Fullscreen Remote Desktop needs the entire monitor, including the
+        // area normally reserved by our app bar. Check before showing so a
+        // restored sidebar does not steal focus from an existing session.
+        if (_remoteDesktopTimer == null)
+        {
+            _remoteDesktopTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            _remoteDesktopTimer.Tick += CheckRemoteDesktop;
+        }
+        _remoteDesktopTimer.Start();
+        CheckRemoteDesktop(this, EventArgs.Empty);
+
+        if (!IsVisible && !_dockSuspended)
         {
             Show();
-            Activate();
+
+            // WPF can move a newly shown window into the work area. At this
+            // point that area already excludes our app bar, so it shifts the
+            // sidebar left by its own width. Place the shown HWND back on the
+            // shell-approved edge without changing its size or taking focus.
+            SetWindowPos(hwnd, IntPtr.Zero, abd.rc.Left,
+                (int)Math.Round(abd.rc.Top - scale), 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            if (!resuming)
+                Activate();
         }
+    }
+
+    private void CheckRemoteDesktop(object? sender, EventArgs e)
+    {
+        if (!SidebarMode)
+            return;
+
+        // Keep the strip free even if focus moves to the RDP connection bar
+        // or another local window while the fullscreen session is still open.
+        if (_dockSuspended && IsFullscreenRemoteDesktop(_fullscreenRemoteDesktop))
+            return;
+
+        IntPtr foreground = GetForegroundWindow();
+        if (IsFullscreenRemoteDesktop(foreground))
+        {
+            _fullscreenRemoteDesktop = foreground;
+            if (!_dockSuspended)
+            {
+                RemoveAppBar();
+                _dockSuspended = true;
+                Topmost = false;
+                Hide();
+            }
+        }
+        else if (_dockSuspended)
+        {
+            _fullscreenRemoteDesktop = IntPtr.Zero;
+            DockToSide();
+        }
+    }
+
+    private bool IsFullscreenRemoteDesktop(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !IsWindowVisible(hwnd) || IsIconic(hwnd) ||
+            MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) != _dockedMonitor ||
+            !GetWindowRect(hwnd, out RECT rect))
+            return false;
+
+        // A maximized, windowed RDP client must still respect the sidebar.
+        // Fullscreen may cover the monitor outright or start borderless at the
+        // available work-area width while our app bar is registered.
+        const int tolerance = 16;
+        bool coversMonitor = rect.Left <= _dockMonitorRect.Left + tolerance &&
+                             rect.Top <= _dockMonitorRect.Top + tolerance &&
+                             rect.Right >= _dockMonitorRect.Right - tolerance &&
+                             rect.Bottom >= _dockMonitorRect.Bottom - tolerance;
+        bool fillsWorkAreaWithoutChrome = (GetWindowLong(hwnd, GWL_STYLE) & WS_CAPTION) == 0 &&
+                                          !IsZoomed(hwnd) &&
+                                          rect.Left <= _dockWorkRect.Left + tolerance &&
+                                          rect.Top <= _dockWorkRect.Top + tolerance &&
+                                          rect.Right >= _dockMonitorRect.Right - _dockWidthPx - tolerance &&
+                                          rect.Bottom >= _dockWorkRect.Bottom - tolerance;
+        if (!coversMonitor && !fillsWorkAreaWithoutChrome)
+            return false;
+
+        GetWindowThreadProcessId(hwnd, out uint processId);
+        try
+        {
+            using var process = Process.GetProcessById((int)processId);
+            return process.ProcessName.Equals("mstsc", StringComparison.OrdinalIgnoreCase) ||
+                   process.ProcessName.Equals("msrdc", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException) { return false; } // The window just closed.
+        catch (System.ComponentModel.Win32Exception) { return false; }
+    }
+
+    private void RemoveAppBar()
+    {
+        var abd = new APPBARDATA
+        {
+            cbSize = (uint)Marshal.SizeOf<APPBARDATA>(),
+            hWnd = new WindowInteropHelper(this).EnsureHandle()
+        };
+        SHAppBarMessage(ABM_REMOVE, ref abd);
+    }
+
+    private void StopRemoteDesktopWatch()
+    {
+        _remoteDesktopTimer?.Stop();
+        _fullscreenRemoteDesktop = IntPtr.Zero;
+        _dockSuspended = false;
+        Topmost = true;
     }
 
     /// <summary>
@@ -228,16 +347,14 @@ public partial class DashboardPopup : Window
         if (!SidebarMode)
             return;
 
-        var abd = new APPBARDATA
-        {
-            cbSize = (uint)Marshal.SizeOf<APPBARDATA>(),
-            hWnd = new WindowInteropHelper(this).EnsureHandle()
-        };
-        SHAppBarMessage(ABM_REMOVE, ref abd);
+        if (!_dockSuspended)
+            RemoveAppBar();
+        StopRemoteDesktopWatch();
         _dockedMonitor = IntPtr.Zero;
         SidebarMode = false;
 
         SizeToContent = SizeToContent.Height;
+        Width = _dockWidthDip;
         ApplyMaxHeight();
         _userMoved = false;
 
@@ -259,12 +376,9 @@ public partial class DashboardPopup : Window
         if (!SidebarMode)
             return;
 
-        var abd = new APPBARDATA
-        {
-            cbSize = (uint)Marshal.SizeOf<APPBARDATA>(),
-            hWnd = new WindowInteropHelper(this).EnsureHandle()
-        };
-        SHAppBarMessage(ABM_REMOVE, ref abd);
+        if (!_dockSuspended)
+            RemoveAppBar();
+        StopRemoteDesktopWatch();
         _dockedMonitor = IntPtr.Zero;
         SidebarMode = false;
     }
@@ -395,6 +509,9 @@ public partial class DashboardPopup : Window
     {
         if (SidebarMode)
         {
+            if (_dockSuspended)
+                return;
+
             // Re-dock so the app-bar rect and window size track the new DPI.
             DockToSide();
             return;
@@ -424,6 +541,42 @@ public partial class DashboardPopup : Window
     private const int SM_CYVIRTUALSCREEN = 79;
 
     private const int LOGPIXELSX = 88;
+
+    private const int GWL_STYLE = -16;
+    private const int WS_CAPTION = 0x00C00000;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+        int x, int y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsZoomed(IntPtr hWnd);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int GetSystemMetrics(int nIndex);

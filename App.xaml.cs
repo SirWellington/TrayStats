@@ -437,7 +437,8 @@ public partial class App : Application
             // A docked sidebar is persistent; a left-click just brings it to front.
             _dashboardOpen = true;
             _viewModel?.SetDashboardActive(true);
-            _popup.Activate();
+            if (!_popup.IsDockSuspended)
+                _popup.Activate();
             return;
         }
 
