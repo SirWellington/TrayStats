@@ -7,7 +7,11 @@ namespace TrayStats.Services;
 public sealed class CpuMonitorService : IMonitorService
 {
     private readonly HardwareContext _context;
+    private readonly WindowsCpuUsageSampler _usageSampler = new();
+    private readonly WindowsCpuPerfSampler _perfSampler = new();
     private bool _needsFallback;
+    private float[] _lpUsage = [];
+    private bool[] _lpParked = [];
 
     public CpuData Data { get; } = new();
     public event Action? DataUpdated;
@@ -36,6 +40,8 @@ public sealed class CpuMonitorService : IMonitorService
         catch { }
     }
 
+    private CpuTopology.Info _topology = CpuTopology.Info.Unknown;
+
     private void InitCores()
     {
         foreach (var hw in _context.GetHardware())
@@ -48,15 +54,17 @@ public sealed class CpuMonitorService : IMonitorService
             int coreCount = 0;
             foreach (var sensor in hw.Sensors)
             {
-                if (sensor.SensorType == SensorType.Load && sensor.Name.StartsWith("CPU Core #"))
-                    coreCount++;
+                if (sensor.SensorType == SensorType.Load &&
+                    TryParseCoreIndex(sensor.Name, out int index))
+                    coreCount = Math.Max(coreCount, index + 1);
             }
 
             Data.CoreCount = coreCount > 0 ? coreCount : Environment.ProcessorCount;
             Data.ThreadCount = Environment.ProcessorCount;
 
-            for (int i = 0; i < Data.CoreCount; i++)
-                Data.Cores.Add(new CpuCoreData { CoreIndex = i });
+            _topology = CpuTopology.Get();
+            for (int i = 0; i < Data.ThreadCount; i++)
+                Data.Cores.Add(new CpuCoreData { CoreIndex = i, IsPCore = _topology.IsPPerLp[i] });
 
             break;
         }
@@ -95,17 +103,13 @@ public sealed class CpuMonitorService : IMonitorService
                     case SensorType.Load when sensor.Name == "CPU Total":
                         Data.TotalLoad = val;
                         break;
-                    case SensorType.Load when sensor.Name.StartsWith("CPU Core #"):
-                        if (TryParseCoreIndex(sensor.Name, out int coreIdx) && coreIdx < Data.Cores.Count)
-                            Data.Cores[coreIdx].Usage = val;
-                        break;
 
                     case SensorType.Temperature when sensor.Name.Contains("Package") || sensor.Name.Contains("Average"):
                         Data.Temperature = val;
                         break;
                     case SensorType.Temperature when sensor.Name.StartsWith("CPU Core #"):
-                        if (TryParseCoreIndex(sensor.Name, out int tempIdx) && tempIdx < Data.Cores.Count)
-                            Data.Cores[tempIdx].Temperature = val;
+                        if (TryParseCoreIndex(sensor.Name, out int tempIdx))
+                            SetCoreSensors(tempIdx, temperature: val);
                         if (val > fallbackTemp) fallbackTemp = val;
                         break;
                     case SensorType.Temperature:
@@ -113,8 +117,8 @@ public sealed class CpuMonitorService : IMonitorService
                         break;
 
                     case SensorType.Clock when sensor.Name.StartsWith("CPU Core #"):
-                        if (TryParseCoreIndex(sensor.Name, out int clkIdx) && clkIdx < Data.Cores.Count)
-                            Data.Cores[clkIdx].Clock = val;
+                        if (TryParseCoreIndex(sensor.Name, out int clkIdx))
+                            SetCoreSensors(clkIdx, clock: val);
                         if (val > maxClock) maxClock = val;
                         break;
                     case SensorType.Clock when sensor.Name.Contains("Core"):
@@ -131,11 +135,44 @@ public sealed class CpuMonitorService : IMonitorService
                 }
             }
 
+            // Windows performance counters report per-LP usage and the current parking state.
+            if (_lpUsage.Length != Data.Cores.Count)
+            {
+                _lpUsage = new float[Data.Cores.Count];
+                _lpParked = new bool[Data.Cores.Count];
+            }
+
+            if (_perfSampler.TrySample(_lpUsage, _lpParked))
+            {
+                for (int i = 0; i < Data.Cores.Count; i++)
+                {
+                    Data.Cores[i].Usage = _lpUsage[i];
+                    Data.Cores[i].IsParked = _lpParked[i];
+                }
+            }
+
+            // The Windows aggregate counter covers every logical processor and avoids
+            // anomalous CPU Total readings from the hardware sensor on some systems.
+            if (_usageSampler.TrySample(out float usage)) Data.TotalLoad = usage;
+
             if (maxClock > 0) Data.Clock = maxClock;
             if (Data.Temperature == 0 && fallbackTemp > 0) Data.Temperature = fallbackTemp;
             if (Data.PackagePower == 0 && fallbackPower > 0) Data.PackagePower = fallbackPower;
 
             break;
+        }
+    }
+
+    private void SetCoreSensors(int coreIdx, float? temperature = null, float? clock = null)
+    {
+        // LHM "CPU Core #N" sensors are per physical core; spread them onto that core's logical processors.
+        if (coreIdx < 0 || coreIdx >= _topology.LpsOfCore.Length) return;
+
+        foreach (int lp in _topology.LpsOfCore[coreIdx])
+        {
+            if (lp >= Data.Cores.Count) continue;
+            if (temperature is { } t) Data.Cores[lp].Temperature = t;
+            if (clock is { } c) Data.Cores[lp].Clock = c;
         }
     }
 
@@ -193,5 +230,10 @@ public sealed class CpuMonitorService : IMonitorService
         return false;
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        Stop();
+        _usageSampler.Dispose();
+        _perfSampler.Dispose();
+    }
 }

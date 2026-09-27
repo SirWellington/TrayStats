@@ -270,18 +270,13 @@ Right-click the tray icon and open the **Sections** submenu to toggle which sect
 
 ## Running as Admin
 
-Some hardware sensors (CPU temperature, disk temperature, GPU fan speed) require administrator privileges to read. Without admin:
+CPU package temperature and power require low-level hardware access. This version of LibreHardwareMonitorLib uses the PawnIO driver for that access. On a system without PawnIO, CPU load can still work while `CPU Package` temperature is unavailable and package power remains zero. To enable the readings:
 
-- These values will show **N/A** in the dashboard
-- Everything else (load percentages, memory, disk space, network) works normally
+1. Install the **official signed** PawnIO edition from [pawnio.eu](https://pawnio.eu/).
+2. Exit and reopen TrayStats so the hardware library initializes with the driver available.
+3. If either value still shows **N/A**, right-click the tray icon, click **Restart as Admin**, and accept the UAC prompt.
 
-To get full sensor data:
-
-1. Right-click the tray icon
-2. Click **Restart as Admin**
-3. Accept the UAC prompt
-
-The app seamlessly restarts itself with elevated privileges. Your dashboard state and settings are preserved.
+Other hardware sensors (such as disk temperature and GPU fan speed) may also need administrator privileges. The app restarts itself with elevated privileges while preserving your dashboard settings. Windows' WMI fallback may supply a CPU clock or thermal-zone temperature, but it does not provide CPU package power.
 
 > **Note:** Some very new CPUs (e.g., Intel Arrow Lake / Core Ultra 200 series) may show N/A for temperature, clock, and power even with admin access. This is a known limitation of the underlying hardware monitoring library ([LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)) which hasn't added full support for these processors yet. WMI fallbacks are used where available.
 

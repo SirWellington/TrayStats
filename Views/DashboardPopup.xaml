@@ -301,7 +301,7 @@
                             </Grid>
                         </Border>
 
-                        <!-- Per-core bars -->
+                        <!-- Per-logical-processor bars -->
                         <ItemsControl ItemsSource="{Binding Cpu.Cores}" Margin="0,4,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -309,18 +309,46 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="50"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="36"/>
+                                            <ColumnDefinition Width="48"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Foreground="#90FFFFFF" FontSize="10"
-                                                   Text="{Binding CoreIndex, StringFormat=Core {0}}" VerticalAlignment="Center"/>
+                                                   Text="{Binding CoreIndex, StringFormat=CPU {0}}" VerticalAlignment="Center"/>
                                         <Border Grid.Column="1" Background="#20FFFFFF" CornerRadius="2" Height="6"
                                                 VerticalAlignment="Center" Margin="4,0">
-                                            <Border Background="#4CAF50" CornerRadius="2" HorizontalAlignment="Left"
-                                                    Width="{Binding Usage, Converter={StaticResource PercentToWidth}}"/>
+                                            <Border CornerRadius="2" HorizontalAlignment="Left"
+                                                    Width="{Binding Usage, Converter={StaticResource PercentToWidth}}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#FFA726"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPCore}" Value="True">
+                                                                <Setter Property="Background" Value="#4CAF50"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsParked}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                            </Border>
                                         </Border>
                                         <TextBlock Grid.Column="2" Foreground="#90FFFFFF" FontSize="10"
                                                    Text="{Binding Usage, StringFormat={}{0:F0}%}"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsParked}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="2" Text="Parked" FontSize="9" Foreground="#FFA726"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Visibility="{Binding IsParked, Converter={StaticResource BoolToVis}}"/>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

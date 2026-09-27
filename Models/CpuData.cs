@@ -8,6 +8,8 @@ public partial class CpuCoreData : ObservableObject
     [ObservableProperty] private float _usage;
     [ObservableProperty] private float _temperature;
     [ObservableProperty] private float _clock;
+    [ObservableProperty] private bool _isParked;
+    [ObservableProperty] private bool _isPCore = true;
 }
 
 public partial class CpuData : ObservableObject
