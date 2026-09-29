@@ -11,7 +11,7 @@ public partial class WeatherData : ObservableObject
     [ObservableProperty] private float _windSpeed;
     [ObservableProperty] private string _weatherCondition = "--";
     [ObservableProperty] private string _weatherIcon = "\u2601"; // default cloud icon
-    [ObservableProperty] private string _weatherIconColor = "#BBFFFFFF";
+    [ObservableProperty] private string _weatherIconColor = "#FF708398";
     [ObservableProperty] private int _precipitationProbability;
 
     public List<DailyForecast> LatestForecast { get; set; } = new();
@@ -24,14 +24,14 @@ public partial class DailyForecast : ObservableObject
     [ObservableProperty] private float _low;
     [ObservableProperty] private string _weatherCondition = "";
     [ObservableProperty] private string _weatherIcon = "";
-    [ObservableProperty] private string _weatherIconColor = "#BBFFFFFF";
+    [ObservableProperty] private string _weatherIconColor = "#FF708398";
     [ObservableProperty] private int _precipitationProbability;
 }
 
 public static class WmoWeatherCodes
 {
     private const string Yellow  = "#FFFFC107";
-    private const string White   = "#BBFFFFFF";
+    private const string White   = "#FF708398";
     private const string Blue    = "#FF64B5F6";
     private const string IceBlue = "#FFB3E5FC";
     private const string Purple  = "#FFCE93D8";

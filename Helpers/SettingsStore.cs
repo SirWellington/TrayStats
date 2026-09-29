@@ -3,6 +3,13 @@ using System.Text.Json;
 
 namespace TrayStats.Helpers;
 
+public enum ThemeMode
+{
+    System,
+    Light,
+    Dark
+}
+
 /// <summary>
 /// The user's persistent settings: which metric the tray icon shows, the icon
 /// style, which dashboard sections are visible, and related toggles.
@@ -14,6 +21,7 @@ public class Settings
     public IconStyle IconStyle { get; set; } = IconStyle.MiniChart;
     public bool KeepVisible { get; set; }
     public bool SidebarMode { get; set; }
+    public ThemeMode Theme { get; set; } = ThemeMode.System;
 
     public bool ShowWeather { get; set; } = true;
     public bool ShowCpu { get; set; } = true;

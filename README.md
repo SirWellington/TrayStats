@@ -60,6 +60,7 @@ This project was vibecoded by a developer who missed having quick system stats w
 | **System Uptime** | Time since last boot, OS version, machine name, user name |
 | **Weather** | Current conditions and 3-day forecast via Open-Meteo (no API key needed) |
 | **Section visibility** | Choose which sections appear on the dashboard via the right-click menu |
+| **Light and dark themes** | Follow Windows' app theme automatically, or choose Light or Dark from the tray menu |
 | **Expandable detail panels** | Click any section header to expand/collapse detailed stats |
 | **Close button** | Close the dashboard without quitting the app |
 | **Start with Windows** | Optional auto-start via the context menu |
@@ -100,6 +101,7 @@ dotnet run
    - **Show Dashboard** -- open the popup
    - **Tray Metric** -- choose what the icon displays (CPU, GPU, or RAM)
    - **Icon Style** -- choose how the icon looks (Bar, Percentage, or Mini Chart)
+   - **Theme** -- follow the Windows app theme (System), or choose Light or Dark
    - **Sections** -- toggle which sections are visible on the dashboard
    - **Restart as Admin** -- relaunch with elevated privileges for full sensor data
    - **Start with Windows** -- toggle auto-start at login
@@ -111,7 +113,7 @@ dotnet run
 
 ## Dashboard
 
-The dashboard is a dark-themed popup window that anchors near your system tray. Each section shows a sparkline chart with 60 data points of history and a summary. Click the arrow on any section to expand its detail panel. Use the close button (top-right) to dismiss the dashboard without quitting the app.
+The dashboard is a themed popup window that anchors near your system tray. By default, its colors follow the Windows app theme, including changes while TrayStats is running. Choose **Theme > Light** or **Theme > Dark** from the tray menu to override Windows; choose **Theme > System** to resume following it. Your choice is saved across restarts. Each section shows a sparkline chart with 60 data points of history and a summary. Click the arrow on any section to expand its detail panel. Use the close button (top-right) to dismiss the dashboard without quitting the app.
 
 ### Weather
 
@@ -321,7 +323,7 @@ TrayStats/
     DashboardViewModel.cs        MVVM ViewModel, sparkline data, relay commands
 
   Views/
-    DashboardPopup.xaml(.cs)     WPF popup window with dark theme, positioned near tray
+    DashboardPopup.xaml(.cs)     WPF popup window with light/dark themes, positioned near tray
     Components/
       SparklineChart.cs          Custom WPF Canvas control for sparkline rendering
 

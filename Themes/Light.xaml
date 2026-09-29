@@ -1,0 +1,19 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="PanelBackground" Color="#F7FFFFFF"/>
+    <SolidColorBrush x:Key="PanelBorder" Color="#33000000"/>
+    <SolidColorBrush x:Key="RowBackground" Color="#0A000000"/>
+    <SolidColorBrush x:Key="RowHoverBackground" Color="#16000000"/>
+    <SolidColorBrush x:Key="DetailBackground" Color="#10000000"/>
+    <SolidColorBrush x:Key="SubtleBackground" Color="#0B000000"/>
+    <SolidColorBrush x:Key="CloseHoverBackground" Color="#18000000"/>
+    <SolidColorBrush x:Key="TextStrong" Color="#FF1B2430"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#FF354151"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#FF485666"/>
+    <SolidColorBrush x:Key="TextFaint" Color="#FF536172"/>
+    <SolidColorBrush x:Key="TextVeryFaint" Color="#FF617184"/>
+    <SolidColorBrush x:Key="TextHint" Color="#FF687788"/>
+    <SolidColorBrush x:Key="TextDetailValue" Color="#FF243244"/>
+    <SolidColorBrush x:Key="TextCloseHover" Color="#FF17212D"/>
+    <SolidColorBrush x:Key="ParkedText" Color="#FF9A4700"/>
+</ResourceDictionary>

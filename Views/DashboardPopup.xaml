@@ -13,9 +13,9 @@
         Background="Transparent"
         Deactivated="Window_Deactivated">
 
-    <Border x:Name="RootBorder" Background="#E6202020"
+    <Border x:Name="RootBorder" Background="{DynamicResource PanelBackground}"
             CornerRadius="8"
-            BorderBrush="#40FFFFFF"
+            BorderBrush="{DynamicResource PanelBorder}"
             BorderThickness="1"
             Margin="4"
             Padding="8,4">
@@ -29,11 +29,11 @@
             <!-- Header -->
             <Grid Margin="4,2,4,6" MouseLeftButtonDown="Header_MouseLeftButtonDown"
                   Background="Transparent">
-                <TextBlock Text="TrayStats" FontSize="11" Foreground="#80FFFFFF"
+                <TextBlock Text="TrayStats" FontSize="11" Foreground="{DynamicResource TextFaint}"
                            FontWeight="SemiBold" IsHitTestVisible="False"/>
                 <Button Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"
                         HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Background="Transparent" Foreground="#80FFFFFF" BorderThickness="0"
+                        Background="Transparent" Foreground="{DynamicResource TextFaint}" BorderThickness="0"
                         Cursor="Hand" Padding="4,2" Click="CloseButton_Click">
                     <Button.Style>
                         <Style TargetType="Button">
@@ -46,8 +46,8 @@
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#40FFFFFF"/>
-                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter Property="Background" Value="{DynamicResource CloseHoverBackground}"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextCloseHover}"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -74,25 +74,25 @@
                             <TextBlock Text="{Binding Weather.WeatherIcon}" FontFamily="Segoe UI Symbol"
                                        FontSize="22" Foreground="{Binding Weather.WeatherIconColor}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Weather.City}" Foreground="#B0FFFFFF" FontSize="11"/>
+                                <TextBlock Text="{Binding Weather.City}" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Weather.Temperature, Converter={StaticResource WeatherTemp}}"
-                                                Foreground="#DDFFFFFF" FontSize="16" FontWeight="SemiBold"/>
+                                                Foreground="{DynamicResource TextStrong}" FontSize="16" FontWeight="SemiBold"/>
                                     <TextBlock Text="{Binding Weather.WeatherCondition}"
-                                               Foreground="#80FFFFFF" FontSize="11" VerticalAlignment="Bottom" Margin="6,0,0,2"/>
+                                               Foreground="{DynamicResource TextFaint}" FontSize="11" VerticalAlignment="Bottom" Margin="6,0,0,2"/>
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- Weather Detail Panel -->
                     <StackPanel Visibility="{Binding IsWeatherDetailVisible, Converter={StaticResource BoolToVis}}"
                                 Margin="0,6,0,0">
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -127,21 +127,21 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#15FFFFFF" CornerRadius="4" Padding="6,4" Margin="2,0">
+                                    <Border Background="{DynamicResource SubtleBackground}" CornerRadius="4" Padding="6,4" Margin="2,0">
                                         <StackPanel HorizontalAlignment="Center">
-                                            <TextBlock Text="{Binding DayName}" Foreground="#90FFFFFF" FontSize="10"
+                                            <TextBlock Text="{Binding DayName}" Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                        HorizontalAlignment="Center"/>
                                             <TextBlock Text="{Binding WeatherIcon}" FontFamily="Segoe UI Symbol"
                                                        FontSize="18" Foreground="{Binding WeatherIconColor}" HorizontalAlignment="Center" Margin="0,2"/>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                 <TextBlock Text="{Binding High, Converter={StaticResource WeatherTemp}}"
-                                                            Foreground="#DDFFFFFF" FontSize="10" FontWeight="SemiBold"/>
-                                                <TextBlock Text=" / " Foreground="#60FFFFFF" FontSize="10"/>
+                                                            Foreground="{DynamicResource TextStrong}" FontSize="10" FontWeight="SemiBold"/>
+                                                <TextBlock Text=" / " Foreground="{DynamicResource TextVeryFaint}" FontSize="10"/>
                                                 <TextBlock Text="{Binding Low, Converter={StaticResource WeatherTemp}, ConverterParameter=no_na}"
-                                                            Foreground="#80FFFFFF" FontSize="10"/>
+                                                            Foreground="{DynamicResource TextFaint}" FontSize="10"/>
                                             </StackPanel>
                                             <TextBlock Text="{Binding PrecipitationProbability, StringFormat={}{0}% rain}"
-                                                       Foreground="#60FFFFFF" FontSize="9" HorizontalAlignment="Center" Margin="0,1,0,0"/>
+                                                       Foreground="{DynamicResource TextVeryFaint}" FontSize="9" HorizontalAlignment="Center" Margin="0,1,0,0"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -166,10 +166,10 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center" Width="80">
                             <TextBlock Text="Processes" Style="{StaticResource MetricLabelStyle}"/>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Processes.TopConsumerName}" Foreground="#DDFFFFFF" FontSize="10"
+                                <TextBlock Text="{Binding Processes.TopConsumerName}" Foreground="{DynamicResource TextStrong}" FontSize="10"
                                            TextTrimming="CharacterEllipsis" MaxWidth="60"/>
                                 <TextBlock Text="{Binding Processes.TopConsumerCpu, StringFormat={} {0:F0}%}"
-                                           Foreground="#80FFFFFF" FontSize="10" Margin="2,0,0,0"/>
+                                           Foreground="{DynamicResource TextFaint}" FontSize="10" Margin="2,0,0,0"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -182,7 +182,7 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Background="#20FFFFFF" CornerRadius="2"/>
+                                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="2"/>
                                         <Border Background="#FF42A5F5" CornerRadius="2" HorizontalAlignment="Left"
                                                 Width="{Binding CpuPercent, Converter={StaticResource PercentToWidth}}"/>
                                     </Grid>
@@ -192,7 +192,7 @@
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- Processes Detail Panel -->
@@ -201,7 +201,7 @@
                         <ItemsControl ItemsSource="{Binding TopProcesses}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#15FFFFFF" CornerRadius="3" Padding="8,4" Margin="0,1">
+                                    <Border Background="{DynamicResource SubtleBackground}" CornerRadius="3" Padding="8,4" Margin="0,1">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -210,9 +210,9 @@
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" Foreground="#DDFFFFFF" FontSize="10"
+                                                <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextStrong}" FontSize="10"
                                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="100"/>
-                                                <TextBlock Foreground="#60FFFFFF" FontSize="9" VerticalAlignment="Center" Margin="4,0,0,0">
+                                                <TextBlock Foreground="{DynamicResource TextVeryFaint}" FontSize="9" VerticalAlignment="Center" Margin="4,0,0,0">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Text" Value=""/>
@@ -230,7 +230,7 @@
                                                        Text="{Binding CpuPercent, StringFormat={}{0:F1}%}"
                                                        HorizontalAlignment="Right" VerticalAlignment="Center"/>
 
-                                            <TextBlock Grid.Column="2" Foreground="#80FFFFFF" FontSize="10"
+                                            <TextBlock Grid.Column="2" Foreground="{DynamicResource TextFaint}" FontSize="10"
                                                        Text="{Binding MemoryMb, StringFormat={}{0:F0} MB}"
                                                        HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                         </Grid>
@@ -265,13 +265,13 @@
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- CPU Detail Panel -->
                     <StackPanel Visibility="{Binding IsCpuDetailVisible, Converter={StaticResource BoolToVis}}"
                                 Margin="0,6,0,0">
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -285,7 +285,7 @@
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding Cpu.Name}"
-                                           Foreground="#B0FFFFFF" FontSize="11" Margin="0,0,0,4"/>
+                                           Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Temperature"/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailValue}"
@@ -311,9 +311,9 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="48"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Foreground="#90FFFFFF" FontSize="10"
+                                        <TextBlock Grid.Column="0" Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                    Text="{Binding CoreIndex, StringFormat=CPU {0}}" VerticalAlignment="Center"/>
-                                        <Border Grid.Column="1" Background="#20FFFFFF" CornerRadius="2" Height="6"
+                                        <Border Grid.Column="1" Background="{DynamicResource DetailBackground}" CornerRadius="2" Height="6"
                                                 VerticalAlignment="Center" Margin="4,0">
                                             <Border CornerRadius="2" HorizontalAlignment="Left"
                                                     Width="{Binding Usage, Converter={StaticResource PercentToWidth}}">
@@ -332,7 +332,7 @@
                                                 </Border.Style>
                                             </Border>
                                         </Border>
-                                        <TextBlock Grid.Column="2" Foreground="#90FFFFFF" FontSize="10"
+                                        <TextBlock Grid.Column="2" Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                    Text="{Binding Usage, StringFormat={}{0:F0}%}"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center">
                                             <TextBlock.Style>
@@ -346,7 +346,7 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <TextBlock Grid.Column="2" Text="Parked" FontSize="9" Foreground="#FFA726"
+                                        <TextBlock Grid.Column="2" Text="Parked" FontSize="9" Foreground="{DynamicResource ParkedText}"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                                    Visibility="{Binding IsParked, Converter={StaticResource BoolToVis}}"/>
                                     </Grid>
@@ -382,13 +382,13 @@
 
                                     <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                                Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                               Foreground="#60FFFFFF" Margin="4,0"/>
+                                               Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                                 </Grid>
 
                                 <!-- GPU Detail Panel -->
                                 <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"
                                             Margin="0,6,0,0">
-                                    <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                                    <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -405,7 +405,7 @@
                                             </Grid.RowDefinitions>
 
                                             <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding Data.Name}"
-                                                       Foreground="#B0FFFFFF" FontSize="11" Margin="0,0,0,4"/>
+                                                       Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
 
                                             <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource DetailLabel}" Text="Temperature"/>
                                             <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailValue}"
@@ -462,13 +462,13 @@
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- RAM Detail Panel -->
                     <StackPanel Visibility="{Binding IsRamDetailVisible, Converter={StaticResource BoolToVis}}"
                                 Margin="0,6,0,0">
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -505,7 +505,7 @@
                             <ProgressBar.Template>
                                 <ControlTemplate TargetType="ProgressBar">
                                     <Grid>
-                                        <Border Background="#20FFFFFF" CornerRadius="3" x:Name="PART_Track"/>
+                                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="3" x:Name="PART_Track"/>
                                         <Border CornerRadius="3" HorizontalAlignment="Left"
                                                 Background="{TemplateBinding Foreground}" x:Name="PART_Indicator"/>
                                     </Grid>
@@ -544,14 +544,14 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="36"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="#B0FFFFFF"
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{DynamicResource TextSecondary}"
                                                    FontSize="10" VerticalAlignment="Center"/>
-                                        <Border Grid.Column="1" Background="#20FFFFFF" CornerRadius="2"
+                                        <Border Grid.Column="1" Background="{DynamicResource DetailBackground}" CornerRadius="2"
                                                 Height="6" VerticalAlignment="Center">
                                             <Border Background="#FF9800" CornerRadius="2" HorizontalAlignment="Left"
                                                     Width="{Binding UsagePercent, Converter={StaticResource PercentToWidth}}"/>
                                         </Border>
-                                        <TextBlock Grid.Column="2" Foreground="#90FFFFFF" FontSize="10"
+                                        <TextBlock Grid.Column="2" Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                    Text="{Binding UsagePercent, StringFormat={}{0:F0}%}"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                     </Grid>
@@ -561,7 +561,7 @@
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- Disk Detail Panel -->
@@ -570,12 +570,12 @@
                         <ItemsControl ItemsSource="{Binding Disk.Drives}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                                    <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                                         <StackPanel>
-                                            <TextBlock Foreground="#B0FFFFFF" FontSize="11" FontWeight="SemiBold"
+                                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold"
                                                        Margin="0,0,0,4">
                                                 <Run Text="{Binding Name, Mode=OneWay}"/>
-                                                <Run Text=" - " Foreground="#60FFFFFF"/>
+                                                <Run Text=" - " Foreground="{DynamicResource TextVeryFaint}"/>
                                                 <Run Text="{Binding Label, Mode=OneWay}"/>
                                             </TextBlock>
                                             <Grid>
@@ -640,13 +640,13 @@
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- Battery Detail Panel -->
                     <StackPanel Visibility="{Binding IsBatteryDetailVisible, Converter={StaticResource BoolToVis}}"
                                 Margin="0,6,0,0">
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -718,7 +718,7 @@
                             <ProgressBar.Template>
                                 <ControlTemplate TargetType="ProgressBar">
                                     <Grid>
-                                        <Border Background="#20FFFFFF" CornerRadius="3" x:Name="PART_Track"/>
+                                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="3" x:Name="PART_Track"/>
                                         <Border CornerRadius="3" HorizontalAlignment="Left"
                                                 Background="{TemplateBinding Foreground}" x:Name="PART_Indicator"/>
                                     </Grid>
@@ -747,7 +747,7 @@
                                        Foreground="#FF42A5F5" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="Bluetooth" Style="{StaticResource MetricLabelStyle}"/>
-                                <TextBlock Foreground="#DDFFFFFF" FontSize="11">
+                                <TextBlock Foreground="{DynamicResource TextStrong}" FontSize="11">
                                     <TextBlock.Text>
                                         <Binding Path="Bluetooth.ConnectedCount" StringFormat="{}{0} connected"/>
                                     </TextBlock.Text>
@@ -757,7 +757,7 @@
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- Bluetooth Detail Panel -->
@@ -766,7 +766,7 @@
                         <ItemsControl ItemsSource="{Binding BluetoothDevices}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#15FFFFFF" CornerRadius="3" Padding="8,5" Margin="0,1">
+                                    <Border Background="{DynamicResource SubtleBackground}" CornerRadius="3" Padding="8,5" Margin="0,1">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -778,11 +778,11 @@
                                                        FontSize="14" Foreground="#FF42A5F5" VerticalAlignment="Center" Margin="0,0,8,0"/>
 
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" Foreground="#DDFFFFFF" FontSize="10"
+                                                <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextStrong}" FontSize="10"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding DeviceType}" Foreground="#60FFFFFF" FontSize="9"/>
-                                                    <TextBlock Foreground="#60FFFFFF" FontSize="9" Margin="6,0,0,0">
+                                                    <TextBlock Text="{Binding DeviceType}" Foreground="{DynamicResource TextVeryFaint}" FontSize="9"/>
+                                                    <TextBlock Foreground="{DynamicResource TextVeryFaint}" FontSize="9" Margin="6,0,0,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
                                                                 <Setter Property="Text" Value="Connected"/>
@@ -798,7 +798,7 @@
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
-                                                <TextBlock Foreground="#90FFFFFF" FontSize="10" VerticalAlignment="Center"
+                                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center"
                                                            Margin="4,0">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
@@ -819,7 +819,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock Foreground="#40FFFFFF" FontSize="9" Margin="4,4,0,0"
+                        <TextBlock Foreground="{DynamicResource TextHint}" FontSize="9" Margin="4,4,0,0"
                                    Text="Battery levels shown when reported by device"
                                    FontStyle="Italic"/>
                     </StackPanel>
@@ -843,12 +843,12 @@
                             <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
                                 <TextBlock Text="&#xE74B;" FontFamily="Segoe MDL2 Assets" FontSize="8"
                                            Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="0,0,3,0"/>
-                                <TextBlock Text="{Binding Net.DownloadFormatted}" Foreground="#DDFFFFFF" FontSize="10"/>
+                                <TextBlock Text="{Binding Net.DownloadFormatted}" Foreground="{DynamicResource TextStrong}" FontSize="10"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
                                 <TextBlock Text="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="8"
                                            Foreground="#FFFF5722" VerticalAlignment="Center" Margin="0,0,3,0"/>
-                                <TextBlock Text="{Binding Net.UploadFormatted}" Foreground="#DDFFFFFF" FontSize="10"/>
+                                <TextBlock Text="{Binding Net.UploadFormatted}" Foreground="{DynamicResource TextStrong}" FontSize="10"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -864,13 +864,13 @@
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- Network Detail Panel -->
                     <StackPanel Visibility="{Binding IsNetDetailVisible, Converter={StaticResource BoolToVis}}"
                                 Margin="0,6,0,0">
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -905,18 +905,18 @@
                         <ItemsControl ItemsSource="{Binding Net.Adapters}" Margin="0,4,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#15FFFFFF" CornerRadius="3" Padding="6,3" Margin="0,1">
+                                    <Border Background="{DynamicResource SubtleBackground}" CornerRadius="3" Padding="6,3" Margin="0,1">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="{Binding Name}" Foreground="#B0FFFFFF" FontSize="10"/>
-                                                <TextBlock Text="{Binding Description}" Foreground="#60FFFFFF" FontSize="9"
+                                                <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
+                                                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextVeryFaint}" FontSize="9"
                                                            TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="1" Text="{Binding Speed}" Foreground="#80FFFFFF"
+                                            <TextBlock Grid.Column="1" Text="{Binding Speed}" Foreground="{DynamicResource TextFaint}"
                                                        FontSize="10" VerticalAlignment="Center"/>
                                         </Grid>
                                     </Border>
@@ -944,23 +944,23 @@
                                        Foreground="#FF66BB6A" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="Uptime" Style="{StaticResource MetricLabelStyle}"/>
-                                <TextBlock Text="{Binding Uptime.Uptime}" Foreground="#DDFFFFFF" FontSize="11"/>
+                                <TextBlock Text="{Binding Uptime.Uptime}" Foreground="{DynamicResource TextStrong}" FontSize="11"/>
                             </StackPanel>
                         </StackPanel>
 
                         <TextBlock Grid.Column="1" Text="{Binding Uptime.MachineName}"
-                                   Foreground="#60FFFFFF" FontSize="10"
+                                    Foreground="{DynamicResource TextVeryFaint}" FontSize="10"
                                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0"/>
 
                         <TextBlock Grid.Column="2" VerticalAlignment="Center"
                                    Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="10"
-                                   Foreground="#60FFFFFF" Margin="4,0"/>
+                                    Foreground="{DynamicResource TextVeryFaint}" Margin="4,0"/>
                     </Grid>
 
                     <!-- Uptime Detail Panel -->
                     <StackPanel Visibility="{Binding IsUptimeDetailVisible, Converter={StaticResource BoolToVis}}"
                                 Margin="0,6,0,0">
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,6" Margin="0,2">
+                        <Border Background="{DynamicResource DetailBackground}" CornerRadius="4" Padding="8,6" Margin="0,2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>

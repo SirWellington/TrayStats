@@ -4,54 +4,58 @@
              xmlns:helpers="clr-namespace:TrayStats.Helpers"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
-        <!-- Converters -->
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <helpers:PercentToWidthConverter x:Key="PercentToWidth" MaxWidth="150"/>
-        <helpers:PercentToWidthLargeConverter x:Key="PercentToWidthLarge" MaxWidth="290"/>
-        <helpers:SensorValueConverter x:Key="SensorValue"/>
-        <helpers:WeatherTemperatureConverter x:Key="WeatherTemp"/>
-        <helpers:BatteryLevelToBrushConverter x:Key="BatteryLevelToBrush"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Dark.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Converters -->
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <helpers:PercentToWidthConverter x:Key="PercentToWidth" MaxWidth="150"/>
+            <helpers:PercentToWidthLargeConverter x:Key="PercentToWidthLarge" MaxWidth="290"/>
+            <helpers:SensorValueConverter x:Key="SensorValue"/>
+            <helpers:WeatherTemperatureConverter x:Key="WeatherTemp"/>
+            <helpers:BatteryLevelToBrushConverter x:Key="BatteryLevelToBrush"/>
 
-        <!-- Metric Row Container -->
-        <Style x:Key="MetricRowStyle" TargetType="Border">
-            <Setter Property="Background" Value="#10FFFFFF"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="Margin" Value="0,2"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#20FFFFFF"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+            <!-- Metric Row Container -->
+            <Style x:Key="MetricRowStyle" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource RowBackground}"/>
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="Padding" Value="8,6"/>
+                <Setter Property="Margin" Value="0,2"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource RowHoverBackground}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
 
-        <!-- Metric Labels -->
-        <Style x:Key="MetricLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#90FFFFFF"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
+            <!-- Metric Labels -->
+            <Style x:Key="MetricLabelStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
 
-        <Style x:Key="MetricValueStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#DDFFFFFF"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-        </Style>
+            <Style x:Key="MetricValueStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextStrong}"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+            </Style>
 
-        <!-- Detail Panel Styles -->
-        <Style x:Key="DetailLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#80FFFFFF"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Margin" Value="0,1"/>
-        </Style>
+            <!-- Detail Panel Styles -->
+            <Style x:Key="DetailLabel" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextFaint}"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Margin" Value="0,1"/>
+            </Style>
 
-        <Style x:Key="DetailValue" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="HorizontalAlignment" Value="Right"/>
-            <Setter Property="Margin" Value="0,1"/>
-        </Style>
-
+            <Style x:Key="DetailValue" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextDetailValue}"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="Margin" Value="0,1"/>
+            </Style>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

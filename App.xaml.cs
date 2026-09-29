@@ -20,6 +20,7 @@ public partial class App : Application
     private DashboardViewModel? _viewModel;
     private DispatcherTimer? _iconTimer;
     private Settings _settings = new();
+    private readonly ThemeManager _themeManager = new();
     private IconStyle _iconStyle = IconStyle.MiniChart;
     private TrayMetric _trayMetric = TrayMetric.CPU;
     private MenuItem[]? _gpuMenuItems;
@@ -66,6 +67,7 @@ public partial class App : Application
         _viewModel = new DashboardViewModel();
 
         LoadSettings();
+        _themeManager.SetMode(_settings.Theme);
 
         // Dump all sensors to a log file for diagnostics
         try
@@ -149,6 +151,19 @@ public partial class App : Application
         styleMenu.Items.Add(pctItem);
         styleMenu.Items.Add(chartItem);
         contextMenu.Items.Add(styleMenu);
+
+        var themeMenu = new MenuItem { Header = "Theme" };
+        var systemThemeItem = new MenuItem { Header = "System", IsCheckable = true };
+        var lightThemeItem = new MenuItem { Header = "Light", IsCheckable = true };
+        var darkThemeItem = new MenuItem { Header = "Dark", IsCheckable = true };
+        var themeItems = new[] { systemThemeItem, lightThemeItem, darkThemeItem };
+        themeItems[(int)_themeManager.Mode].IsChecked = true;
+        systemThemeItem.Click += (_, _) => SetTheme(ThemeMode.System, themeItems);
+        lightThemeItem.Click += (_, _) => SetTheme(ThemeMode.Light, themeItems);
+        darkThemeItem.Click += (_, _) => SetTheme(ThemeMode.Dark, themeItems);
+        foreach (var item in themeItems)
+            themeMenu.Items.Add(item);
+        contextMenu.Items.Add(themeMenu);
 
         // Sections submenu
         var sectionsMenu = new MenuItem { Header = "Sections" };
@@ -349,6 +364,15 @@ public partial class App : Application
         SaveSettings();
     }
 
+    private void SetTheme(ThemeMode mode, MenuItem[] items)
+    {
+        _themeManager.SetMode(mode);
+        for (int i = 0; i < items.Length; i++)
+            items[i].IsChecked = i == (int)mode;
+        _settings.Theme = mode;
+        SaveSettings();
+    }
+
     private void AddSectionToggle(MenuItem parent, string label, Func<bool> getter, Action<bool> setter)
     {
         var item = new MenuItem
@@ -372,6 +396,8 @@ public partial class App : Application
     private void LoadSettings()
     {
         _settings = SettingsStore.Load();
+        if (!Enum.IsDefined(_settings.Theme))
+            _settings.Theme = ThemeMode.System;
         _iconStyle = _settings.IconStyle;
         _trayMetric = _settings.TrayMetric;
         _keepVisible = _settings.KeepVisible;
@@ -523,6 +549,10 @@ public partial class App : Application
 
     private void UpdateTrayIcon(object? sender, EventArgs e)
     {
+        // Also catches Windows theme changes while the dashboard is hidden.
+        if (_themeManager.Mode == ThemeMode.System)
+            _themeManager.Refresh();
+
         if (_trayIcon == null || _viewModel == null) return;
 
         try
