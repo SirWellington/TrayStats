@@ -313,10 +313,15 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                    Text="{Binding CoreIndex, StringFormat=CPU {0}}" VerticalAlignment="Center"/>
-                                        <Border Grid.Column="1" Background="{DynamicResource DetailBackground}" CornerRadius="2" Height="6"
+                                        <Border x:Name="CpuUsageTrack" Grid.Column="1" Background="{DynamicResource DetailBackground}" CornerRadius="2" Height="6"
                                                 VerticalAlignment="Center" Margin="4,0">
-                                            <Border CornerRadius="2" HorizontalAlignment="Left"
-                                                    Width="{Binding Usage, Converter={StaticResource PercentToWidth}}">
+                                            <Border CornerRadius="2" HorizontalAlignment="Left">
+                                                <Border.Width>
+                                                    <MultiBinding Converter="{StaticResource PercentOfTrackWidth}">
+                                                        <Binding Path="Usage"/>
+                                                        <Binding Path="ActualWidth" ElementName="CpuUsageTrack"/>
+                                                    </MultiBinding>
+                                                </Border.Width>
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Background" Value="#FFA726"/>

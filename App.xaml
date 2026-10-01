@@ -11,6 +11,7 @@
             <!-- Converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <helpers:PercentToWidthConverter x:Key="PercentToWidth" MaxWidth="150"/>
+            <helpers:PercentOfTrackWidthConverter x:Key="PercentOfTrackWidth"/>
             <helpers:PercentToWidthLargeConverter x:Key="PercentToWidthLarge" MaxWidth="290"/>
             <helpers:SensorValueConverter x:Key="SensorValue"/>
             <helpers:WeatherTemperatureConverter x:Key="WeatherTemp"/>

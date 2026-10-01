@@ -6,6 +6,31 @@ using System.Windows.Media;
 namespace TrayStats.Helpers;
 
 /// <summary>
+/// Converts a percentage and the actual track width to the fill width.
+/// </summary>
+public class PercentOfTrackWidthConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        double percentage = values[0] switch
+        {
+            float f => f,
+            double d => d,
+            _ => 0
+        };
+        double width = values[1] is double dWidth ? dWidth : 0;
+
+        if (!double.IsFinite(percentage) || !double.IsFinite(width))
+            return 0.0;
+
+        return Math.Max(0, width) * Math.Clamp(percentage, 0, 100) / 100.0;
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>
 /// Converts a percentage (0-100) to a Width value proportional to the parent container.
 /// Uses a reference width of ~150px for compact bars.
 /// </summary>
