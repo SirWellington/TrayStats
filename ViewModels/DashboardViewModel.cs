@@ -63,6 +63,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     // UI-thread collections for cross-thread-safe binding
     public ObservableCollection<DailyForecast> ForecastItems { get; } = new();
     public ObservableCollection<ProcessInfo> TopProcesses { get; } = new();
+    public ObservableCollection<NetApplicationData> TopNetworkApplications { get; } = new();
     public ObservableCollection<BluetoothDeviceInfo> BluetoothDevices { get; } = new();
 
     // Section visibility
@@ -280,8 +281,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void OnNetworkUpdated()
     {
+        var applications = Net.LatestApplications;
         _dispatcher.BeginInvoke(() =>
         {
+            TopNetworkApplications.Clear();
+            foreach (var application in applications)
+                TopNetworkApplications.Add(application);
             PushValue(NetDownValues, Net.DownloadBytesPerSec / 1024.0);
             PushValue(NetUpValues, Net.UploadBytesPerSec / 1024.0);
             NetSummary = $"{Net.DownloadFormatted} / {Net.UploadFormatted}";

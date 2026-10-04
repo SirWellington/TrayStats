@@ -15,6 +15,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.1.21" />
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6-pre637" />
     <PackageReference Include="System.Management" Version="10.0.3" />
   </ItemGroup>

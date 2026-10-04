@@ -7,6 +7,7 @@ namespace TrayStats.Services;
 public sealed class NetworkMonitorService : IMonitorService
 {
     private readonly System.Timers.Timer _timer;
+    private readonly ProcessNetworkSampler _applicationSampler = new();
     private long _previousBytesReceived;
     private long _previousBytesSent;
     private long _sessionStartReceived;
@@ -27,10 +28,15 @@ public sealed class NetworkMonitorService : IMonitorService
     public void Start()
     {
         InitializeBaseline();
+        _applicationSampler.Start();
         _timer.Start();
     }
 
-    public void Stop() => _timer.Stop();
+    public void Stop()
+    {
+        _timer.Stop();
+        _applicationSampler.Stop();
+    }
 
     private void InitializeBaseline()
     {
@@ -40,7 +46,6 @@ public sealed class NetworkMonitorService : IMonitorService
         _sessionStartReceived = recv;
         _sessionStartSent = sent;
         _initialized = true;
-        UpdateAdapters();
     }
 
     private void OnTimerElapsed(object? sender, ElapsedEventArgs e)
@@ -67,6 +72,10 @@ public sealed class NetworkMonitorService : IMonitorService
 
             _previousBytesReceived = recv;
             _previousBytesSent = sent;
+
+            var sample = _applicationSampler.Sample();
+            Data.LatestApplications = sample.Applications;
+            Data.ApplicationStatus = sample.Status;
 
             DataUpdated?.Invoke();
         }
@@ -105,39 +114,10 @@ public sealed class NetworkMonitorService : IMonitorService
         return (totalReceived, totalSent);
     }
 
-    private void UpdateAdapters()
-    {
-        Data.Adapters.Clear();
-        foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
-        {
-            if (ni.NetworkInterfaceType is NetworkInterfaceType.Loopback
-                or NetworkInterfaceType.Tunnel)
-                continue;
-
-            Data.Adapters.Add(new NetAdapterData
-            {
-                Name = ni.Name,
-                Description = ni.Description,
-                Speed = FormatLinkSpeed(ni.Speed),
-                IsActive = ni.OperationalStatus == OperationalStatus.Up
-            });
-        }
-    }
-
-    private static string FormatLinkSpeed(long bitsPerSec)
-    {
-        if (bitsPerSec >= 1_000_000_000)
-            return $"{bitsPerSec / 1_000_000_000.0:F0} Gbps";
-        if (bitsPerSec >= 1_000_000)
-            return $"{bitsPerSec / 1_000_000.0:F0} Mbps";
-        if (bitsPerSec >= 1_000)
-            return $"{bitsPerSec / 1_000.0:F0} Kbps";
-        return $"{bitsPerSec} bps";
-    }
-
     public void Dispose()
     {
         _timer.Stop();
         _timer.Dispose();
+        _applicationSampler.Dispose();
     }
 }

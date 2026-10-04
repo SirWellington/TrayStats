@@ -2,12 +2,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace TrayStats.Models;
 
-public partial class NetAdapterData : ObservableObject
+public sealed class NetApplicationData
 {
-    [ObservableProperty] private string _name = string.Empty;
-    [ObservableProperty] private string _description = string.Empty;
-    [ObservableProperty] private string _speed = string.Empty;
-    [ObservableProperty] private bool _isActive;
+    public string Name { get; init; } = string.Empty;
+    public double DownloadBytesPerSec { get; init; }
+    public double UploadBytesPerSec { get; init; }
+    public string DownloadFormatted => NetData.FormatSpeed(DownloadBytesPerSec);
+    public string UploadFormatted => NetData.FormatSpeed(UploadBytesPerSec);
 }
 
 public partial class NetData : ObservableObject
@@ -17,7 +18,8 @@ public partial class NetData : ObservableObject
     [ObservableProperty] private long _totalDownloaded;
     [ObservableProperty] private long _totalUploaded;
 
-    public List<NetAdapterData> Adapters { get; set; } = new();
+    public List<NetApplicationData> LatestApplications { get; set; } = new();
+    [ObservableProperty] private string _applicationStatus = "Collecting application network activity…";
 
     public string DownloadFormatted => FormatSpeed(DownloadBytesPerSec);
     public string UploadFormatted => FormatSpeed(UploadBytesPerSec);

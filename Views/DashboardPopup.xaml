@@ -906,8 +906,10 @@
                             </Grid>
                         </Border>
 
-                        <!-- Adapter list -->
-                        <ItemsControl ItemsSource="{Binding Net.Adapters}" Margin="0,4,0,0">
+                        <TextBlock Text="Top applications · download + upload" Style="{StaticResource DetailLabel}" Margin="6,6,0,2"/>
+                        <TextBlock Text="{Binding Net.ApplicationStatus}" Foreground="{DynamicResource TextFaint}"
+                                   FontSize="10" TextWrapping="Wrap" Margin="6,0"/>
+                        <ItemsControl ItemsSource="{Binding TopNetworkApplications}" Margin="0,4,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="{DynamicResource SubtleBackground}" CornerRadius="3" Padding="6,3" Margin="0,1">
@@ -916,13 +918,16 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
-                                                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextVeryFaint}" FontSize="9"
-                                                           TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{DynamicResource TextSecondary}"
+                                                       FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="10" HorizontalAlignment="Right">
+                                                    <Run Text="↓ "/><Run Text="{Binding DownloadFormatted, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Foreground="{DynamicResource TextFaint}" FontSize="10" HorizontalAlignment="Right">
+                                                    <Run Text="↑ "/><Run Text="{Binding UploadFormatted, Mode=OneWay}"/>
+                                                </TextBlock>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="1" Text="{Binding Speed}" Foreground="{DynamicResource TextFaint}"
-                                                       FontSize="10" VerticalAlignment="Center"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

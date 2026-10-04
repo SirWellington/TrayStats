@@ -54,7 +54,7 @@ This project was vibecoded by a developer who missed having quick system stats w
 | **RAM monitoring** | Used / available / total memory, load percentage |
 | **Disk monitoring** | Per-drive space usage, temperature, read/write speeds |
 | **Battery monitoring** | Charge level, charge/discharge rate, voltage, time remaining, health, design/full charge capacity. Color-coded sparkline and charge bar (green -> yellow -> red based on level) |
-| **Network monitoring** | Real-time download/upload speeds with sparkline history |
+| **Network monitoring** | Real-time download/upload speeds with sparkline history and the top 5 applications by bandwidth |
 | **Top Processes** | Top 5 CPU-consuming processes with CPU and memory usage |
 | **Bluetooth / Peripherals** | Connected and paired Bluetooth devices with device type icons and connection status |
 | **System Uptime** | Time since last boot, OS version, machine name, user name |
@@ -212,6 +212,9 @@ Device types are auto-classified (headphones, mouse, keyboard, gamepad, etc.) wi
 | **Download speed** | Current download rate |
 | **Upload speed** | Current upload rate |
 | **Sparkline charts** | Separate download/upload history graphs |
+| **Top applications** | Up to 5 active applications ranked by combined download and upload rate, with both rates shown separately |
+
+Application rates update every second while the dashboard is open. Processes with the same executable name are grouped together. This uses Windows TCP/UDP network events and requires **Restart as Admin** from the tray menu. Without administrator access, overall network speeds still work and the application list displays an explanatory message.
 
 ### System Uptime
 
@@ -314,6 +317,7 @@ TrayStats/
     BatteryMonitorService.cs     Battery monitoring via LHM + GetSystemPowerStatus P/Invoke
     DiskMonitorService.cs        Disk space via System.IO.DriveInfo + LHM for temps
     NetworkMonitorService.cs     Network bandwidth via System.Net.NetworkInformation
+    ProcessNetworkSampler.cs     Per-application TCP/UDP bandwidth via Windows kernel events
     WeatherService.cs            Open-Meteo API + IP geolocation for weather data
     ProcessMonitorService.cs     Top process tracking via System.Diagnostics.Process
     BluetoothMonitorService.cs   Bluetooth devices via WinRT Windows.Devices.Bluetooth APIs
