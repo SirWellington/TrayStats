@@ -6,8 +6,73 @@
         Height="430"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
-        Background="#FF202020"
-        Foreground="#FFF0F0F0">
+        Background="{DynamicResource DialogBackground}"
+        Foreground="{DynamicResource TextStrong}">
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextStrong}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource TextStrong}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource InputFocusBorder}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextStrong}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource TextStrong}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource InputFocusBorder}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextStrong}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource ButtonPressedBackground}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextStrong}"/>
+        </Style>
+    </Window.Resources>
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -22,10 +87,10 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
             <TextBlock Text="Send TrayStats sensors to Home Assistant"
-                       FontSize="17" FontWeight="SemiBold"/>
-            <TextBlock Margin="0,5,0,0" Foreground="#FFB8B8B8" TextWrapping="Wrap"
+                       FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource TextStrong}"/>
+            <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                        Text="Enter the private MQTT broker address and credentials. The password is stored encrypted for this Windows account."/>
-            <TextBlock Margin="0,5,0,0" Foreground="#FF9E9E9E" TextWrapping="Wrap"
+            <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
                        Text="For another PC, use this broker host's Tailscale name/IP or its LAN address instead of 127.0.0.1."/>
         </StackPanel>
 
@@ -38,32 +103,32 @@
                 <ColumnDefinition Width="95"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                <TextBlock Text="Broker host" Margin="0,0,0,4"/>
+                <TextBlock Text="Broker host" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}"/>
                 <TextBox x:Name="HostTextBox" Height="28" Padding="5,3"/>
             </StackPanel>
             <StackPanel Grid.Column="1">
-                <TextBlock Text="Port" Margin="0,0,0,4"/>
+                <TextBlock Text="Port" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}"/>
                 <TextBox x:Name="PortTextBox" Height="28" Padding="5,3"/>
             </StackPanel>
         </Grid>
 
         <StackPanel Grid.Row="3" Margin="0,0,0,8">
-            <TextBlock Text="Home Assistant device name" Margin="0,0,0,4"/>
+            <TextBlock Text="Home Assistant device name" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}"/>
             <TextBox x:Name="DeviceNameTextBox" Height="28" Padding="5,3"/>
         </StackPanel>
 
         <StackPanel Grid.Row="4" Margin="0,0,0,8">
-            <TextBlock Text="Username" Margin="0,0,0,4"/>
+            <TextBlock Text="Username" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}"/>
             <TextBox x:Name="UsernameTextBox" Height="28" Padding="5,3"/>
         </StackPanel>
 
         <StackPanel Grid.Row="5" Margin="0,0,0,8">
-            <TextBlock Text="Password" Margin="0,0,0,4"/>
+            <TextBlock Text="Password" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}"/>
             <PasswordBox x:Name="PasswordBox" Height="28" Padding="5,3"/>
         </StackPanel>
 
         <TextBlock x:Name="StatusTextBlock" Grid.Row="6" Margin="0,4,0,12"
-                   Foreground="#FFB8B8B8" TextWrapping="Wrap"/>
+                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
 
         <DockPanel Grid.Row="7" LastChildFill="False">
             <Button x:Name="TestButton" DockPanel.Dock="Left" Width="130" Height="32"
