@@ -16,3 +16,16 @@ public partial class GpuData : ObservableObject
     [ObservableProperty] private float _memoryLoad;
     [ObservableProperty] private float _power;
 }
+
+public sealed record GpuTelemetrySnapshot(
+    string Name,
+    float CoreLoad,
+    float Temperature,
+    float CoreClock,
+    float MemoryClock,
+    float FanSpeed,
+    float FanPercent,
+    float MemoryUsed,
+    float MemoryTotal,
+    float MemoryLoad,
+    float Power);

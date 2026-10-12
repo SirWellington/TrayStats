@@ -9,6 +9,7 @@ public sealed class GpuMonitorService : IMonitorService
     private const float IdleThreshold = 15f;
 
     private readonly HardwareContext _context;
+    private readonly object _sync = new();
 
     // Primary GPU (auto-selected for backward compatibility)
     public GpuData Data { get; } = new();
@@ -17,6 +18,31 @@ public sealed class GpuMonitorService : IMonitorService
     public List<GpuData> AllGpus { get; } = new();
 
     public event Action? DataUpdated;
+
+    public IReadOnlyList<GpuData> GetAllGpuReferences()
+    {
+        lock (_sync)
+            return AllGpus.ToArray();
+    }
+
+    public IReadOnlyList<GpuTelemetrySnapshot> GetTelemetrySnapshot()
+    {
+        lock (_sync)
+        {
+            return AllGpus.Select(gpu => new GpuTelemetrySnapshot(
+                gpu.Name,
+                gpu.CoreLoad,
+                gpu.Temperature,
+                gpu.CoreClock,
+                gpu.MemoryClock,
+                gpu.FanSpeed,
+                gpu.FanPercent,
+                gpu.MemoryUsed,
+                gpu.MemoryTotal,
+                gpu.MemoryLoad,
+                gpu.Power)).ToArray();
+        }
+    }
 
     private readonly Dictionary<string, GpuEntry> _gpuMap = new(StringComparer.Ordinal);
 
@@ -47,6 +73,12 @@ public sealed class GpuMonitorService : IMonitorService
     };
 
     private void Update()
+    {
+        lock (_sync)
+            UpdateCore();
+    }
+
+    private void UpdateCore()
     {
         var hardware = _context.GetHardware();
 

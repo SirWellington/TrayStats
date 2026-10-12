@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using H.NotifyIcon;
 using TrayStats.Helpers;
+using TrayStats.Services;
 using TrayStats.ViewModels;
 using TrayStats.Views;
 
@@ -18,6 +19,8 @@ public partial class App : Application
     private TaskbarIcon? _trayIcon;
     private DashboardPopup? _popup;
     private DashboardViewModel? _viewModel;
+    private HomeAssistantMqttPublisher? _mqttPublisher;
+    private MenuItem? _mqttStatusMenuItem;
     private DispatcherTimer? _iconTimer;
     private Settings _settings = new();
     private readonly ThemeManager _themeManager = new();
@@ -67,6 +70,9 @@ public partial class App : Application
         _viewModel = new DashboardViewModel();
 
         LoadSettings();
+        _mqttPublisher = new HomeAssistantMqttPublisher(_viewModel, _settings);
+        _mqttPublisher.StatusChanged += OnMqttStatusChanged;
+        _ = _mqttPublisher.ApplySettingsAsync(_settings);
         _themeManager.SetMode(_settings.Theme);
 
         // Dump all sensors to a log file for diagnostics
@@ -98,6 +104,7 @@ public partial class App : Application
         };
 
         CreateTrayIcon();
+        OnMqttStatusChanged(_mqttPublisher.Status);
 
         // Restore a previously docked sidebar.
         if (_settings.SidebarMode)
@@ -178,6 +185,14 @@ public partial class App : Application
         AddSectionToggle(sectionsMenu, "Bluetooth", () => _viewModel!.Sections.ShowBluetooth, v => _viewModel!.Sections.ShowBluetooth = v);
         AddSectionToggle(sectionsMenu, "Uptime", () => _viewModel!.Sections.ShowUptime, v => _viewModel!.Sections.ShowUptime = v);
         contextMenu.Items.Add(sectionsMenu);
+
+        var homeAssistantMenu = new MenuItem { Header = "Home Assistant" };
+        var configureMqttItem = new MenuItem { Header = "Configure MQTT..." };
+        configureMqttItem.Click += async (_, _) => await ConfigureMqttAsync();
+        homeAssistantMenu.Items.Add(configureMqttItem);
+        _mqttStatusMenuItem = new MenuItem { Header = $"MQTT: {_mqttPublisher?.Status ?? "Disabled"}", IsEnabled = false };
+        homeAssistantMenu.Items.Add(_mqttStatusMenuItem);
+        contextMenu.Items.Add(homeAssistantMenu);
 
         var unitsMenu = new MenuItem { Header = "Units" };
         var fahrenheitItem = new MenuItem
@@ -404,6 +419,7 @@ public partial class App : Application
         _sidebarMode = _settings.SidebarMode;
         _viewModel!.SelectedTrayGpuIndex = _settings.TrayGpuIndex;
         _viewModel.NeedsGpuInBackground = _trayMetric == TrayMetric.GPU;
+        _viewModel.SetTelemetryActive(_settings.MqttEnabled);
 
         var sections = _viewModel.Sections;
         sections.ShowWeather = _settings.ShowWeather;
@@ -448,6 +464,36 @@ public partial class App : Application
         }
 
         SettingsStore.Save(_settings);
+    }
+
+    private async Task ConfigureMqttAsync()
+    {
+        if (_viewModel is null || _mqttPublisher is null)
+            return;
+
+        var window = new MqttSettingsWindow(_settings);
+        if (_popup is { IsVisible: true })
+            window.Owner = _popup;
+
+        if (window.ShowDialog() != true)
+            return;
+
+        _settings.MqttEnabled = window.MqttEnabled;
+        _settings.MqttDeviceName = window.DeviceName;
+        _settings.MqttHost = window.BrokerHost;
+        _settings.MqttPort = window.BrokerPort;
+        _settings.MqttUsername = window.Username;
+        _settings.MqttPassword = window.Password;
+        SaveSettings();
+        await _mqttPublisher.ApplySettingsAsync(_settings);
+    }
+
+    private void OnMqttStatusChanged(string status)
+    {
+        if (_mqttStatusMenuItem is null)
+            return;
+
+        Dispatcher.BeginInvoke(() => _mqttStatusMenuItem.Header = $"MQTT: {status}");
     }
 
     private void TogglePopup()
@@ -645,6 +691,7 @@ public partial class App : Application
         _popup?.ReleaseDock();
         _popup?.Hide();
         SaveSettings();
+        _mqttPublisher?.Dispose();
         _viewModel?.Dispose();
 
         if (_trayIcon != null)
@@ -672,6 +719,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _popup?.ReleaseDock();
+        _mqttPublisher?.Dispose();
         _viewModel?.Dispose();
         _trayIcon?.Dispose();
         ReleaseTrayIconHandle();

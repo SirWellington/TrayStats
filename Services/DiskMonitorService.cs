@@ -8,6 +8,7 @@ public sealed class DiskMonitorService : IMonitorService
 {
     private readonly System.Timers.Timer _timer;
     private readonly HardwareContext _hwContext;
+    private readonly object _dataLock = new();
 
     public DiskData Data { get; } = new();
     public event Action? DataUpdated;
@@ -34,6 +35,25 @@ public sealed class DiskMonitorService : IMonitorService
         _timer.Interval = ms;
     }
 
+    public IReadOnlyList<DriveData> GetDrivesSnapshot()
+    {
+        lock (_dataLock)
+        {
+            return Data.Drives.Select(drive => new DriveData
+            {
+                Name = drive.Name,
+                Label = drive.Label,
+                TotalGb = drive.TotalGb,
+                UsedGb = drive.UsedGb,
+                FreeGb = drive.FreeGb,
+                UsagePercent = drive.UsagePercent,
+                Temperature = drive.Temperature,
+                ReadRate = drive.ReadRate,
+                WriteRate = drive.WriteRate
+            }).ToArray();
+        }
+    }
+
     private void OnTimerElapsed(object? sender, ElapsedEventArgs e)
     {
         try
@@ -48,6 +68,12 @@ public sealed class DiskMonitorService : IMonitorService
     }
 
     private void Update()
+    {
+        lock (_dataLock)
+            UpdateCore();
+    }
+
+    private void UpdateCore()
     {
         var storageHwData = _hwContext.GetStorageData();
         var drives = DriveInfo.GetDrives();

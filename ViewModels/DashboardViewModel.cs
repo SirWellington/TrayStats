@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -94,6 +95,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private const int ForegroundDiskInterval = 5000;
 
     private bool _dashboardActive;
+    private bool _telemetryActive;
+    private bool _extendedMonitoringActive;
 
     private bool _needsGpuInBackground;
 
@@ -107,8 +110,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         set
         {
             _needsGpuInBackground = value;
-            if (!_dashboardActive)
-                _hwContext.SetGpuEnabled(value);
+            ApplyPollingMode();
         }
     }
 
@@ -166,35 +168,224 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         if (_dashboardActive == active) return;
         _dashboardActive = active;
 
-        if (active)
-        {
-            _hwContext.SetGpuEnabled(true);
-            _hwContext.SetInterval(ForegroundHwInterval);
-            _diskService.SetInterval(ForegroundDiskInterval);
+        ApplyPollingMode();
 
+        if (active)
+            Task.Run(_hwContext.ForceUpdate);
+    }
+
+    public void SetTelemetryActive(bool active)
+    {
+        if (_telemetryActive == active) return;
+        _telemetryActive = active;
+        ApplyPollingMode();
+    }
+
+    private void ApplyPollingMode()
+    {
+        _hwContext.SetInterval(_dashboardActive ? ForegroundHwInterval : BackgroundHwInterval);
+        _diskService.SetInterval(_dashboardActive ? ForegroundDiskInterval : BackgroundDiskInterval);
+        _hwContext.SetGpuEnabled(_dashboardActive || _telemetryActive || NeedsGpuInBackground);
+
+        bool shouldRunExtendedMonitoring = _dashboardActive || _telemetryActive;
+        if (shouldRunExtendedMonitoring && !_extendedMonitoringActive)
+        {
+            _extendedMonitoringActive = true;
             Task.Run(() =>
             {
                 _netService.Start();
                 _processService.Start();
                 _bluetoothService.Start();
                 _uptimeService.Start();
-                _hwContext.ForceUpdate();
             });
         }
-        else
+        else if (!shouldRunExtendedMonitoring && _extendedMonitoringActive)
         {
-            _hwContext.SetInterval(BackgroundHwInterval);
-
-            if (!NeedsGpuInBackground)
-                _hwContext.SetGpuEnabled(false);
-
+            _extendedMonitoringActive = false;
             _netService.Stop();
             _processService.Stop();
             _bluetoothService.Stop();
             _uptimeService.Stop();
-
-            _diskService.SetInterval(BackgroundDiskInterval);
         }
+    }
+
+    public MqttTelemetrySnapshot CreateMqttSnapshot()
+    {
+        var entities = new List<MqttEntityState>();
+        var cpu = Cpu;
+        var ram = Ram;
+        var battery = Battery;
+        var network = Net;
+        var uptime = Uptime;
+
+        AddNumber(entities, "cpu_load", "CPU Load", cpu.TotalLoad, "%", stateClass: "measurement");
+        AddOptionalNumber(entities, "cpu_temperature", "CPU Temperature", cpu.Temperature, "°C", "temperature", "measurement");
+        AddOptionalNumber(entities, "cpu_package_power", "CPU Package Power", cpu.PackagePower, "W", "power", "measurement");
+        AddOptionalNumber(entities, "cpu_clock", "CPU Clock", cpu.Clock, "MHz", stateClass: "measurement");
+
+        foreach (var core in cpu.Cores)
+        {
+            var coreId = core.CoreIndex + 1;
+            AddNumber(entities, $"cpu_thread_{coreId}_load", $"CPU Thread {coreId} Load", core.Usage, "%", stateClass: "measurement");
+            entities.Add(new MqttEntityState(
+                $"cpu_thread_{coreId}_parked",
+                $"CPU Thread {coreId} Parked",
+                core.IsParked ? "ON" : "OFF",
+                Component: "binary_sensor",
+                Icon: "mdi:cpu-64-bit"));
+        }
+
+        var gpuSnapshots = _gpuService.GetTelemetrySnapshot();
+        for (int index = 0; index < gpuSnapshots.Count; index++)
+        {
+            var gpu = gpuSnapshots[index];
+            var gpuId = $"gpu_{MqttDeviceIdentity.Slugify(gpu.Name)}_{index + 1}";
+            var gpuName = $"GPU {index + 1} {gpu.Name}";
+            AddNumber(entities, $"{gpuId}_load", $"{gpuName} Load", gpu.CoreLoad, "%", stateClass: "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_temperature", $"{gpuName} Temperature", gpu.Temperature, "°C", "temperature", "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_power", $"{gpuName} Power", gpu.Power, "W", "power", "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_core_clock", $"{gpuName} Core Clock", gpu.CoreClock, "MHz", stateClass: "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_memory_clock", $"{gpuName} Memory Clock", gpu.MemoryClock, "MHz", stateClass: "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_vram_used", $"{gpuName} VRAM Used", gpu.MemoryUsed, "MB", "data_size", "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_vram_total", $"{gpuName} VRAM Total", gpu.MemoryTotal, "MB", "data_size", "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_vram_load", $"{gpuName} VRAM Load", gpu.MemoryLoad, "%", stateClass: "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_fan_speed", $"{gpuName} Fan Speed", gpu.FanSpeed, "rpm", stateClass: "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_fan_percent", $"{gpuName} Fan Speed Percent", gpu.FanPercent, "%", stateClass: "measurement");
+        }
+
+        AddNumber(entities, "memory_load", "Memory Load", ram.Load, "%", stateClass: "measurement");
+        AddNumber(entities, "memory_used", "Memory Used", ram.UsedGb, "GB", "data_size", "measurement");
+        AddNumber(entities, "memory_available", "Memory Available", ram.AvailableGb, "GB", "data_size", "measurement");
+        AddNumber(entities, "memory_total", "Memory Total", ram.TotalGb, "GB", "data_size", "measurement");
+
+        var drives = _diskService.GetDrivesSnapshot();
+        AddNumber(entities, "disk_total_usage", "Disk Total Usage", Disk.TotalUsagePercent, "%", stateClass: "measurement");
+        for (int index = 0; index < drives.Count; index++)
+        {
+            var drive = drives[index];
+            var driveId = $"drive_{MqttDeviceIdentity.Slugify(drive.Name)}_{index + 1}";
+            var driveName = string.IsNullOrWhiteSpace(drive.Label) ? drive.Name : drive.Label;
+            AddNumber(entities, $"{driveId}_total", $"{driveName} Total", drive.TotalGb, "GB", "data_size", "measurement");
+            AddNumber(entities, $"{driveId}_used", $"{driveName} Used", drive.UsedGb, "GB", "data_size", "measurement");
+            AddNumber(entities, $"{driveId}_free", $"{driveName} Free", drive.FreeGb, "GB", "data_size", "measurement");
+            AddNumber(entities, $"{driveId}_usage", $"{driveName} Usage", drive.UsagePercent, "%", stateClass: "measurement");
+            AddOptionalNumber(entities, $"{driveId}_temperature", $"{driveName} Temperature", drive.Temperature, "°C", "temperature", "measurement");
+            AddOptionalNumber(entities, $"{driveId}_read_rate", $"{driveName} Read Rate", drive.ReadRate, "MB/s", "data_rate", "measurement");
+            AddOptionalNumber(entities, $"{driveId}_write_rate", $"{driveName} Write Rate", drive.WriteRate, "MB/s", "data_rate", "measurement");
+        }
+
+        AddNumber(entities, "network_download_rate", "Network Download Rate", network.DownloadBytesPerSec, "B/s", "data_rate", "measurement");
+        AddNumber(entities, "network_upload_rate", "Network Upload Rate", network.UploadBytesPerSec, "B/s", "data_rate", "measurement");
+        AddNumber(entities, "network_downloaded_session", "Network Downloaded This Session", network.TotalDownloaded, "B", "data_size");
+        AddNumber(entities, "network_uploaded_session", "Network Uploaded This Session", network.TotalUploaded, "B", "data_size");
+
+        var processes = TopProcesses.Select(process => new Dictionary<string, object?>
+        {
+            ["name"] = process.Name,
+            ["cpu_percent"] = process.CpuPercent,
+            ["memory_mb"] = process.MemoryMb,
+            ["memory_percent"] = process.MemoryPercent,
+            ["instances"] = process.InstanceCount
+        }).ToArray();
+        entities.Add(new MqttEntityState(
+            "top_process",
+            "Top CPU Process",
+            processes.FirstOrDefault() is { } topProcess ? (string)topProcess["name"]! : "None",
+            Icon: "mdi:application-cog",
+            Attributes: new Dictionary<string, object?> { ["processes"] = processes }));
+
+        var networkApplications = TopNetworkApplications.Select(application => new Dictionary<string, object?>
+        {
+            ["name"] = application.Name,
+            ["download_bytes_per_second"] = application.DownloadBytesPerSec,
+            ["upload_bytes_per_second"] = application.UploadBytesPerSec
+        }).ToArray();
+        entities.Add(new MqttEntityState(
+            "top_network_applications",
+            "Top Network Applications",
+            networkApplications.Length.ToString(CultureInfo.InvariantCulture),
+            Unit: "apps",
+            Icon: "mdi:network",
+            Attributes: new Dictionary<string, object?> { ["applications"] = networkApplications }));
+
+        AddNumber(entities, "uptime", "Uptime Seconds", Math.Max(0, (DateTime.Now - uptime.BootTime).TotalSeconds), "s", "duration", "measurement");
+        entities.Add(new MqttEntityState("uptime_display", "Uptime", uptime.Uptime, Icon: "mdi:timer-outline"));
+        entities.Add(new MqttEntityState(
+            "boot_time",
+            "Last Boot",
+            uptime.BootTime == default ? null : uptime.BootTime.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+            DeviceClass: "timestamp",
+            Icon: "mdi:clock-start"));
+        entities.Add(new MqttEntityState("operating_system", "Operating System", uptime.OsVersion, Icon: "mdi:microsoft-windows"));
+        entities.Add(new MqttEntityState("logged_in_user", "Logged-in User", uptime.UserName, Icon: "mdi:account"));
+
+        if (battery.HasBattery)
+        {
+            AddNumber(entities, "battery_level", "Battery Level", battery.ChargeLevel, "%", "battery", "measurement");
+            AddOptionalNumber(entities, "battery_voltage", "Battery Voltage", battery.Voltage, "V", "voltage", "measurement");
+            AddOptionalNumber(entities, "battery_charge_rate", "Battery Charge or Drain Rate", battery.ChargeDischargeRate, "W", "power", "measurement");
+            AddOptionalNumber(entities, "battery_health", "Battery Health", battery.BatteryHealth, "%", stateClass: "measurement");
+            AddOptionalNumber(entities, "battery_designed_capacity", "Battery Design Capacity", battery.DesignedCapacity, "mWh", stateClass: "measurement");
+            AddOptionalNumber(entities, "battery_full_charge_capacity", "Battery Full Charge Capacity", battery.FullChargeCapacity, "mWh", stateClass: "measurement");
+            AddOptionalNumber(entities, "battery_cycle_count", "Battery Cycle Count", battery.CycleCount, "cycles", stateClass: "measurement");
+            AddOptionalNumber(entities, "battery_estimated_adapter_power", "Estimated Adapter Power", battery.AdapterPower, "W", "power", "measurement");
+            entities.Add(new MqttEntityState("battery_status", "Battery Status", battery.StatusText, Icon: "mdi:battery"));
+            entities.Add(new MqttEntityState("battery_time_remaining", "Battery Time Remaining", battery.TimeRemaining, Icon: "mdi:battery-clock"));
+        }
+
+        var bluetoothDevices = BluetoothDevices.Select(device => new Dictionary<string, object?>
+        {
+            ["name"] = device.Name,
+            ["connected"] = device.IsConnected,
+            ["type"] = device.DeviceType,
+            ["battery_percent"] = device.BatteryPercent
+        }).ToArray();
+        AddNumber(entities, "bluetooth_connected_count", "Connected Bluetooth Devices", Bluetooth.ConnectedCount, "devices", stateClass: "measurement");
+        entities.Add(new MqttEntityState(
+            "bluetooth_paired_devices",
+            "Bluetooth Paired Devices",
+            bluetoothDevices.Length.ToString(CultureInfo.InvariantCulture),
+            Unit: "devices",
+            Icon: "mdi:bluetooth",
+            Attributes: new Dictionary<string, object?> { ["devices"] = bluetoothDevices }));
+
+        return new MqttTelemetrySnapshot(Environment.MachineName, entities);
+    }
+
+    private static void AddNumber(
+        ICollection<MqttEntityState> entities,
+        string id,
+        string name,
+        double value,
+        string? unit = null,
+        string? deviceClass = null,
+        string? stateClass = null)
+    {
+        entities.Add(new MqttEntityState(
+            id,
+            name,
+            value.ToString("0.##", CultureInfo.InvariantCulture),
+            Unit: unit,
+            DeviceClass: deviceClass,
+            StateClass: stateClass));
+    }
+
+    private static void AddOptionalNumber(
+        ICollection<MqttEntityState> entities,
+        string id,
+        string name,
+        double value,
+        string? unit = null,
+        string? deviceClass = null,
+        string? stateClass = null)
+    {
+        entities.Add(new MqttEntityState(
+            id,
+            name,
+            value > 0 ? value.ToString("0.##", CultureInfo.InvariantCulture) : null,
+            Unit: unit,
+            DeviceClass: deviceClass,
+            StateClass: stateClass));
     }
 
     private void OnCpuUpdated()
@@ -212,7 +403,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         _dispatcher.BeginInvoke(() =>
         {
-            var allGpus = _gpuService.AllGpus;
+            var allGpus = _gpuService.GetAllGpuReferences();
 
             // Sync display models with actual hardware GPUs
             var existingKeys = new HashSet<string>(allGpus.Select(g => g.Name));

@@ -1,5 +1,8 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TrayStats.Helpers;
 
@@ -34,6 +37,19 @@ public class Settings
     public bool ShowBluetooth { get; set; } = true;
     public bool ShowUptime { get; set; } = true;
     public bool UseFahrenheit { get; set; }
+
+    public bool MqttEnabled { get; set; }
+    public string MqttDeviceName { get; set; } = Environment.MachineName;
+    public string MqttHost { get; set; } = "127.0.0.1";
+    public int MqttPort { get; set; } = 1883;
+    public string MqttUsername { get; set; } = string.Empty;
+    public string MqttPasswordProtected { get; set; } = string.Empty;
+    public string MqttDeviceId { get; set; } = Guid.NewGuid().ToString("N");
+    public int MqttDiscoverySchemaVersion { get; set; }
+    public string[] MqttKnownEntities { get; set; } = [];
+
+    [JsonIgnore]
+    public string MqttPassword { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -56,7 +72,13 @@ public static class SettingsStore
                 return new Settings();
 
             var json = File.ReadAllText(FilePath);
-            return JsonSerializer.Deserialize<Settings>(json) ?? new Settings();
+            var settings = JsonSerializer.Deserialize<Settings>(json) ?? new Settings();
+            settings.MqttPassword = Unprotect(settings.MqttPasswordProtected);
+            if (string.IsNullOrWhiteSpace(settings.MqttDeviceName))
+                settings.MqttDeviceName = Environment.MachineName;
+            if (string.IsNullOrWhiteSpace(settings.MqttDeviceId))
+                settings.MqttDeviceId = Guid.NewGuid().ToString("N");
+            return settings;
         }
         catch
         {
@@ -69,12 +91,48 @@ public static class SettingsStore
         try
         {
             Directory.CreateDirectory(StorageDirectory);
+            settings.MqttPasswordProtected = Protect(settings.MqttPassword);
             var json = JsonSerializer.Serialize(settings);
             File.WriteAllText(FilePath, json);
         }
         catch
         {
             // Saving is best-effort; never let it break the app.
+        }
+    }
+
+    private static string Protect(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        var protectedBytes = ProtectedData.Protect(
+            Encoding.UTF8.GetBytes(value),
+            optionalEntropy: null,
+            DataProtectionScope.CurrentUser);
+        return Convert.ToBase64String(protectedBytes);
+    }
+
+    private static string Unprotect(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        try
+        {
+            var clearBytes = ProtectedData.Unprotect(
+                Convert.FromBase64String(value),
+                optionalEntropy: null,
+                DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(clearBytes);
+        }
+        catch (CryptographicException)
+        {
+            return string.Empty;
+        }
+        catch (FormatException)
+        {
+            return string.Empty;
         }
     }
 }

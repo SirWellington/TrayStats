@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using TrayStats.Helpers;
 
 namespace TrayStats;
 
@@ -15,6 +16,12 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (args.Contains("--configure-mqtt-from-env", StringComparer.Ordinal))
+        {
+            Environment.ExitCode = ConfigureMqttFromEnvironment();
+            return;
+        }
+
         PreloadLocalD3d9();
         System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
@@ -31,6 +38,42 @@ public static class Program
             LogCrash(ex);
             RestartSelf(args);
         }
+    }
+
+    private static int ConfigureMqttFromEnvironment()
+    {
+        var host = Environment.GetEnvironmentVariable("TRAYSTATS_MQTT_HOST") ?? "127.0.0.1";
+        var username = Environment.GetEnvironmentVariable("TRAYSTATS_MQTT_USERNAME") ?? "traystats";
+        var password = Environment.GetEnvironmentVariable("TRAYSTATS_MQTT_PASSWORD");
+        var deviceName = Environment.GetEnvironmentVariable("TRAYSTATS_MQTT_DEVICE_NAME");
+        var portText = Environment.GetEnvironmentVariable("TRAYSTATS_MQTT_PORT") ?? "1883";
+
+        if (string.IsNullOrWhiteSpace(host)
+            || string.IsNullOrWhiteSpace(username)
+            || string.IsNullOrEmpty(password)
+            || !int.TryParse(portText, out var port)
+            || port is < 1 or > 65535)
+        {
+            return 2;
+        }
+
+        var settings = SettingsStore.Load();
+        settings.MqttEnabled = true;
+        settings.MqttDeviceName = string.IsNullOrWhiteSpace(deviceName) ? Environment.MachineName : deviceName.Trim();
+        settings.MqttHost = host.Trim();
+        settings.MqttPort = port;
+        settings.MqttUsername = username.Trim();
+        settings.MqttPassword = password;
+        SettingsStore.Save(settings);
+
+        var saved = SettingsStore.Load();
+        return saved.MqttEnabled
+            && saved.MqttHost == settings.MqttHost
+            && saved.MqttPort == settings.MqttPort
+            && saved.MqttUsername == settings.MqttUsername
+            && saved.MqttPassword == password
+            ? 0
+            : 3;
     }
 
     private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)

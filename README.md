@@ -35,6 +35,7 @@ This project was vibecoded by a developer who missed having quick system stats w
   - [Icon Style](#icon-style)
 - [Section Visibility](#section-visibility)
 - [Running as Admin](#running-as-admin)
+- [Home Assistant MQTT](#home-assistant-mqtt)
 - [Architecture](#architecture)
 - [Known Limitations](#known-limitations)
 - [Building from Source](#building-from-source)
@@ -287,6 +288,49 @@ Other hardware sensors (such as disk temperature and GPU fan speed) may also nee
 
 ---
 
+## Home Assistant MQTT
+
+TrayStats can publish its system readings as MQTT-discovered Home Assistant
+sensors. Add the MQTT integration to Home Assistant, then use the **Home
+Assistant → Configure MQTT** menu in the tray icon to enter the broker host,
+port, username, and password. The password is encrypted with Windows DPAPI and
+stored for the current Windows user.
+
+Each installation defaults to its Windows machine name and allows a friendly
+Home Assistant device name override. This PC appears as **NormandySR2**. The
+MQTT device identity is also tied to a per-installation ID, so a second PC gets
+its own device and unique entity IDs even if it has the same sensor names. The
+broker host should be `127.0.0.1` on the PC running Mosquitto, or the broker
+host's Tailscale name/IP or LAN address on another PC.
+
+The publisher reports CPU load, package power, temperature, clock, per-logical
+processor load and parking; each GPU's load, temperature, reported power,
+clocks, VRAM, and fan data; RAM; disk usage and temperature; network throughput
+and session totals; top processes and network applications; uptime; Bluetooth
+devices; and battery readings when the PC has a battery. Dynamic process,
+application, and Bluetooth lists are included as entity attributes. Hardware
+readings publish every five seconds while the dashboard is hidden, with the
+existing slower disk and hardware sampling intervals retained.
+
+The CPU and GPU power entities measure component telemetry only, not total
+power at the wall. Missing hardware readings remain unknown rather than being
+reported as zero.
+
+For automated deployment, TrayStats can save MQTT settings from environment
+variables without showing a window. Set `TRAYSTATS_MQTT_HOST`,
+`TRAYSTATS_MQTT_PORT`, `TRAYSTATS_MQTT_USERNAME`, and
+`TRAYSTATS_MQTT_PASSWORD`. Optionally set `TRAYSTATS_MQTT_DEVICE_NAME` to a
+friendly display name, then run:
+
+```powershell
+dotnet TrayStats.dll --configure-mqtt-from-env
+```
+
+The password is written only in encrypted form to the current user's TrayStats
+settings file.
+
+---
+
 ## Architecture
 
 TrayStats follows SOLID principles with dedicated monitor services per hardware type and a shared hardware context.
@@ -322,14 +366,20 @@ TrayStats/
     ProcessMonitorService.cs     Top process tracking via System.Diagnostics.Process
     BluetoothMonitorService.cs   Bluetooth devices via WinRT Windows.Devices.Bluetooth APIs
     UptimeMonitorService.cs      System uptime via Environment.TickCount64
+    HomeAssistantMqttModels.cs   Host identities, MQTT discovery topics, sensor config payloads
+    HomeAssistantMqttPublisher.cs Retained discovery/state publishing, reconnect, availability
 
   ViewModels/
     DashboardViewModel.cs        MVVM ViewModel, sparkline data, relay commands
 
   Views/
     DashboardPopup.xaml(.cs)     WPF popup window with light/dark themes, positioned near tray
+    MqttSettingsWindow.xaml(.cs) Broker and Home Assistant device-name settings
     Components/
       SparklineChart.cs          Custom WPF Canvas control for sparkline rendering
+
+  TrayStats.Tests/
+    HomeAssistantMqttDiscoveryTests.cs  Discovery naming, units, and per-PC ID checks
 
   Helpers/
     IconGenerator.cs             Dynamic 16x16 tray icon bitmap generation
