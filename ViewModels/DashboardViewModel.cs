@@ -219,7 +219,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         var uptime = Uptime;
 
         AddNumber(entities, "cpu_load", "CPU Load", cpu.TotalLoad, "%", stateClass: "measurement");
-        AddOptionalNumber(entities, "cpu_temperature", "CPU Temperature", cpu.Temperature, "°C", "temperature", "measurement");
+        AddOptionalNumber(entities, "cpu_temperature", "CPU Temperature", cpu.Temperature, "°C", stateClass: "measurement");
         AddOptionalNumber(entities, "cpu_package_power", "CPU Package Power", cpu.PackagePower, "W", "power", "measurement");
         AddOptionalNumber(entities, "cpu_clock", "CPU Clock", cpu.Clock, "MHz", stateClass: "measurement");
 
@@ -242,7 +242,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             var gpuId = $"gpu_{MqttDeviceIdentity.Slugify(gpu.Name)}_{index + 1}";
             var gpuName = $"GPU {index + 1} {gpu.Name}";
             AddNumber(entities, $"{gpuId}_load", $"{gpuName} Load", gpu.CoreLoad, "%", stateClass: "measurement");
-            AddOptionalNumber(entities, $"{gpuId}_temperature", $"{gpuName} Temperature", gpu.Temperature, "°C", "temperature", "measurement");
+            AddOptionalNumber(entities, $"{gpuId}_temperature", $"{gpuName} Temperature", gpu.Temperature, "°C", stateClass: "measurement");
             AddOptionalNumber(entities, $"{gpuId}_power", $"{gpuName} Power", gpu.Power, "W", "power", "measurement");
             AddOptionalNumber(entities, $"{gpuId}_core_clock", $"{gpuName} Core Clock", gpu.CoreClock, "MHz", stateClass: "measurement");
             AddOptionalNumber(entities, $"{gpuId}_memory_clock", $"{gpuName} Memory Clock", gpu.MemoryClock, "MHz", stateClass: "measurement");
@@ -269,7 +269,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             AddNumber(entities, $"{driveId}_used", $"{driveName} Used", drive.UsedGb, "GB", "data_size", "measurement");
             AddNumber(entities, $"{driveId}_free", $"{driveName} Free", drive.FreeGb, "GB", "data_size", "measurement");
             AddNumber(entities, $"{driveId}_usage", $"{driveName} Usage", drive.UsagePercent, "%", stateClass: "measurement");
-            AddOptionalNumber(entities, $"{driveId}_temperature", $"{driveName} Temperature", drive.Temperature, "°C", "temperature", "measurement");
+                AddOptionalNumber(entities, $"{driveId}_temperature", $"{driveName} Temperature", drive.Temperature, "°C", stateClass: "measurement");
             AddOptionalNumber(entities, $"{driveId}_read_rate", $"{driveName} Read Rate", drive.ReadRate, "MB/s", "data_rate", "measurement");
             AddOptionalNumber(entities, $"{driveId}_write_rate", $"{driveName} Write Rate", drive.WriteRate, "MB/s", "data_rate", "measurement");
         }
