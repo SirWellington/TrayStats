@@ -269,7 +269,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             AddNumber(entities, $"{driveId}_used", $"{driveName} Used", drive.UsedGb, "GB", "data_size", "measurement");
             AddNumber(entities, $"{driveId}_free", $"{driveName} Free", drive.FreeGb, "GB", "data_size", "measurement");
             AddNumber(entities, $"{driveId}_usage", $"{driveName} Usage", drive.UsagePercent, "%", stateClass: "measurement");
-                AddOptionalNumber(entities, $"{driveId}_temperature", $"{driveName} Temperature", drive.Temperature, "°C", stateClass: "measurement");
+             AddOptionalNumber(entities, $"{driveId}_temperature", $"{driveName} Temperature", drive.Temperature, "°C", stateClass: "measurement");
             AddOptionalNumber(entities, $"{driveId}_read_rate", $"{driveName} Read Rate", drive.ReadRate, "MB/s", "data_rate", "measurement");
             AddOptionalNumber(entities, $"{driveId}_write_rate", $"{driveName} Write Rate", drive.WriteRate, "MB/s", "data_rate", "measurement");
         }
